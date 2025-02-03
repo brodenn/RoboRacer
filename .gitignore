@@ -1,0 +1,13 @@
+# Ignore compiled files and OS-generated files
+*.o
+*.bin
+*.hex
+*.elf
+.DS_Store
+*.pyc
+__pycache__/
+
+# Arduino & PlatformIO
+*.pio/
+*.vs/
+*.vscode/
