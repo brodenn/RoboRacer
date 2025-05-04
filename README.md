@@ -47,7 +47,4 @@ The `omnix` robot is one of the vehicles in the RoboRacer project, equipped with
 - [Adafruit Motor Shield Library](https://github.com/adafruit/Adafruit_Motor_Shield_V2_Library)
 - [Adafruit LSM6DSOX Library](https://github.com/adafruit/Adafruit_LSM6DSOX)
 - [Bluepad32](https://github.com/ricardoquesada/Bluepad32)
-
-## License
-
-This module is part of the RoboRacer project and is licensed under the same terms as the main project.
+- [VL53L4CD Library](https://github.com/stm32duino/VL53L4CD)
