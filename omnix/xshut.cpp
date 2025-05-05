@@ -3,14 +3,15 @@
 // --- Actual XSHUT pin mapping (defined once here) ---
 const uint8_t XSHUT_GPIO[NUM_SENSORS] = {
     25,  // SENSOR_FRONT        (A1 / GPIO25)
-    27,  // SENSOR_FRONT_RIGHT  (D27 / GPIO27)
-    33,  // SENSOR_RIGHT        (D33 / GPIO33)
-    26,  // SENSOR_RIGHT_BACK   (A0 / GPIO26)
-     5,  // SENSOR_BACK         (SCK / GPIO5)
-    19,  // SENSOR_BACK_LEFT    (MOSI / GPIO19)
+     4,  // SENSOR_FRONT_LEFT   (A5 / GPIO4)
     32,  // SENSOR_LEFT         (D32 / GPIO32)
-     4   // SENSOR_FRONT_LEFT   (A5 / GPIO4)
+    19,  // SENSOR_BACK_LEFT    (MOSI / GPIO19)
+     5,  // SENSOR_BACK         (SCK / GPIO5)
+    26,  // SENSOR_BACK_RIGHT   (A0 / GPIO26)
+    33,  // SENSOR_RIGHT        (D33 / GPIO33)
+    27   // SENSOR_FRONT_RIGHT  (D27 / GPIO27)
 };
+
 
 // --- Control Functions ---
 void setupXshut() {

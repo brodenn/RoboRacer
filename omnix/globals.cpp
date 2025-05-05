@@ -53,15 +53,18 @@ const int SENSOR_FAILURE_THRESHOLD = 5;
 
 // --- Sensor GPIO interrupt mapping (MATCHING muxMap[]) ---
 const uint8_t SENSOR_GPIO[NUM_SENSORS] = {
-    32,  // Sensor 0: Left
-    25,  // Sensor 1: Front
-    27,  // Sensor 2: Front-Right
-     4,  // Sensor 3: Front-Left
-    19,  // Sensor 4: Back-Left
-    33,  // Sensor 5: Right
-     5,  // Sensor 6: Back
-    26   // Sensor 7: Back-Right
+    25,  // 0: Front        (MUX ch 4)
+    4,   // 1: Front-Left   (MUX ch 5)
+    32,  // 2: Left         (MUX ch 6)
+    19,  // 3: Back-Left    (MUX ch 7)
+    5,   // 4: Back         (MUX ch 0)
+    26,  // 5: Back-Right   (MUX ch 1)
+    33,  // 6: Right        (MUX ch 2)
+    27   // 7: Front-Right  (MUX ch 3)
 };
+
+
+
 
 // --- Trigger flags updated via ISR ---
 volatile bool sensorTriggered[NUM_SENSORS] = {false};
@@ -97,8 +100,8 @@ int INVALID_DISTANCE = 2000;
 // INA219
 // ----------------------
 
-Adafruit_INA219 ina60(0x40);
-Adafruit_INA219 ina61(0x40);
+Adafruit_INA219 ina60(0x40);  // Front INA219
+Adafruit_INA219 ina61(0x41);  // Back INA219
 
 // ----------------------
 // Timing

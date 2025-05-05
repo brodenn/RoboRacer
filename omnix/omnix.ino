@@ -13,13 +13,6 @@
 #include "tasks.h"
 #include "interrupts.h"
 
-bool areAllMotorsBusy() {
-    return abs(target_m1) > 100 &&
-           abs(target_m2) > 100 &&
-           abs(target_m3) > 100 &&
-           abs(target_m4) > 100;
-}
-
 void setup() {
     Serial.begin(115200);
 
@@ -53,7 +46,7 @@ void setup() {
     startAllSensors();
 
     // Start tasks
-    xTaskCreate(sensorTask,     "SensorTask",     8192, nullptr, 3, &sensorTaskHandle);
+    xTaskCreate(sensorTask,     "SensorTask",     8192, nullptr, 1, &sensorTaskHandle);
     xTaskCreate(controllerTask, "ControllerTask", 8192, nullptr, 1, nullptr);
     xTaskCreate(motorTask,      "MotorTask",      8192, nullptr, 1, nullptr);
     xTaskCreate(auxTask,        "AuxTask",        8192, nullptr, 1, nullptr);

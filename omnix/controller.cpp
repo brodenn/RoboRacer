@@ -7,7 +7,7 @@
 ControllerPtr myController = nullptr;
 
 // Deadzone threshold
-const int DEADZONE = 50;
+const int DEADZONE = 70;
 
 // Track previous connection state
 static bool wasConnected = false;
@@ -34,7 +34,6 @@ void controllerSetup() {
     BP32.setup(&onConnected, &onDisconnected);
 }
 
-// Handle gamepad input
 void handleController() {
     BP32.update();
 
@@ -54,6 +53,11 @@ void handleController() {
     int new_m3 = constrain(y - x, -255, 255);
     int new_m4 = constrain(y + x, -255, 255);
 
+    // === Debug prints ===
+    Serial.printf("🎮 Controller Input → X: %4d | Y: %4d\n", x, y);
+    Serial.printf("➡️ Target Motors → M1: %4d | M2: %4d | M3: %4d | M4: %4d\n",
+                  new_m1, new_m2, new_m3, new_m4);
+
     // Update global motor targets
     target_m1 = new_m1;
     target_m2 = new_m2;
@@ -66,3 +70,4 @@ void handleController() {
         xSemaphoreGive(i2cBusyWire1);
     }
 }
+

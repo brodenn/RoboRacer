@@ -42,14 +42,14 @@ void restartSensor(uint8_t i) {
             if (sensor.VL53L4CD_SensorInit() == 0) {
                 sensor.VL53L4CD_SetRangeTiming(200, 0);
 
-                // Use dynamic runtime-updated thresholds
+                // === Corrected threshold selection ===
                 int threshold = 400;
-                if (i == 1) {
+                if (i == 0) { // Front
                     threshold = params.threshold_front;
-                } else if (i == 0 || i == 2 || i == 3 || i == 5) {
-                    threshold = params.threshold_side;
-                } else {
+                } else if (i == 3 || i == 4 || i == 5) { // Back-Left, Back, Back-Right
                     threshold = params.threshold_back;
+                } else { // Front-Left, Left, Right, Front-Right
+                    threshold = params.threshold_side;
                 }
 
                 sensor.VL53L4CD_SetDetectionThresholds(0, threshold, 1);  // interrupt when below high
@@ -141,26 +141,27 @@ void readSensors() {
                     continue;
                 }
 
-                // Unreliable data
-                sensorSoftFailed[i] = true;
+                sensorSoftFailed[i] = true;  // Unreliable data
             } else {
-                // Data not ready or read failed
                 sensorConsecutiveFails[i]++;
-                sensorSoftFailed[i] = true;
+                sensorSoftFailed[i] = true;  // Data not ready or read failed
             }
 
             xSemaphoreGive(i2cBusyWire0);
         }
 
-        // Fallback: use virtual "safe" distance based on group threshold + margin
+        // === Corrected fallback logic ===
         int fallbackDistance = params.INVALID_DISTANCE;
-        if      (i == 1) fallbackDistance = params.threshold_front + 200;
-        else if (i == 0 || i == 2 || i == 3 || i == 5) fallbackDistance = params.threshold_side + 200;
-        else     fallbackDistance = params.threshold_back + 200;
+        if (i == 0) {
+            fallbackDistance = params.threshold_front + 200;
+        } else if (i == 3 || i == 4 || i == 5) {
+            fallbackDistance = params.threshold_back + 200;
+        } else {
+            fallbackDistance = params.threshold_side + 200;
+        }
 
         distances[i] = fallbackDistance;
     }
 
     allSensorsFailed = (failedCount >= NUM_SENSORS);
 }
-

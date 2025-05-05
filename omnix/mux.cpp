@@ -2,17 +2,20 @@
 #include "globals.h"
 
 // --- Updated MUX Lookup Table ---
-// Sensor order: L, F, FR, FL, BL, R, B, BR
+// Sensor order: F, FL, L, BL, B, BR, R, FR
 MuxChannel muxMap[NUM_SENSORS] = {
-    {MUX1_ADDR, 0}, // Sensor 0: Left
-    {MUX1_ADDR, 1}, // Sensor 1: Front
-    {MUX1_ADDR, 2}, // Sensor 2: Front-Right
-    {MUX1_ADDR, 3}, // Sensor 3: Front-Left
-    {MUX1_ADDR, 4}, // Sensor 4: Back-Left
-    {MUX1_ADDR, 5}, // Sensor 5: Right
-    {MUX1_ADDR, 6}, // Sensor 6: Back
-    {MUX1_ADDR, 7}  // Sensor 7: Back-Right
+    {MUX1_ADDR, 4}, // 0 = Front
+    {MUX1_ADDR, 5}, // 1 = Front-Left
+    {MUX1_ADDR, 6}, // 2 = Left
+    {MUX1_ADDR, 7}, // 3 = Back-Left
+    {MUX1_ADDR, 0}, // 4 = Back
+    {MUX1_ADDR, 1}, // 5 = Back-Right
+    {MUX1_ADDR, 2}, // 6 = Right
+    {MUX1_ADDR, 3}  // 7 = Front-Right
 };
+
+
+
 
 void setupMux() {
     Wire.begin();

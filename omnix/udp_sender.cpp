@@ -16,14 +16,14 @@ void sendData() {
     StaticJsonDocument<512> msg;
 
     // === Sensor Data ===
-    msg["l"]  = distances[0];
-    msg["f"]  = distances[1];
-    msg["fr"] = distances[2];
-    msg["fl"] = distances[3];
-    msg["bl"] = distances[4];
-    msg["r"]  = distances[5];
-    msg["b"]  = distances[6];
-    msg["br"] = distances[7];
+    msg["f"]  = distances[0];
+    msg["fl"] = distances[1];
+    msg["l"]  = distances[2];
+    msg["bl"] = distances[3];
+    msg["b"]  = distances[4];
+    msg["br"] = distances[5];
+    msg["r"]  = distances[6];
+    msg["fr"] = distances[7];
 
     // === Motor Speeds ===
     msg["m1"] = current_m1;
@@ -56,16 +56,19 @@ void sendData() {
 
     // === INA219 Auto Read (optional) ===
     if (inaContinuous) {
-        float current_ina60 = 0.0f;
-        float current_ina61 = 0.0f;
+        Serial.println("⚡ INA auto-read enabled — reading INA219");
 
-        deselectAllMux();
-        selectMuxINA60();
-        current_ina60 = ina60.getCurrent_mA();
+        float current_ina60 = ina60.getCurrent_mA();
+        float current_ina61 = ina61.getCurrent_mA();
 
-        deselectAllMux();
-        selectMuxINA61();
-        current_ina61 = ina61.getCurrent_mA();
+        // Debug validation
+        if (isnan(current_ina60) || isnan(current_ina61)) {
+            Serial.println("❌ INA219 read failed: got NaN values");
+        } else {
+            Serial.printf("📊 INA219: INA60 = %.2f mA | INA61 = %.2f mA\n", current_ina60, current_ina61);
+        }
+
+        delayMicroseconds(300);  // Avoid back-to-back UDP issues
 
         StaticJsonDocument<256> reply;
         reply["ack"] = "ina_data";
@@ -74,8 +77,12 @@ void sendData() {
 
         char inaJson[256];
         serializeJson(reply, inaJson);
-        udp.beginPacket(laptop_ip, udp_port);
-        udp.write((const uint8_t*)inaJson, strlen(inaJson));
-        udp.endPacket();
+
+        if (xSemaphoreTake(wifiSemaphore, pdMS_TO_TICKS(50))) {
+            udp.beginPacket(laptop_ip, udp_port);
+            udp.write((const uint8_t*)inaJson, strlen(inaJson));
+            udp.endPacket();
+            xSemaphoreGive(wifiSemaphore);
+        }
     }
 }
