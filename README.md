@@ -48,7 +48,7 @@ The `omnix_py` directory contains Python scripts that complement the robot's fir
 1. Initialize the I2C buses and configure the multiplexer.
 2. Set up sensors, motors, and WiFi.
 3. Start FreeRTOS tasks for sensor reading, motor control, and auxiliary logic.
-4. Run the Python tools using `python main.py` in the `omnix_py` directory.
+4. Run the Python tools using `python3 main.py` in the `omnix_py` directory.
 
 ## Usage
 
