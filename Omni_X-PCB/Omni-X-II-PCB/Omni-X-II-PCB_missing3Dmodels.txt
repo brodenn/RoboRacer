@@ -1,0 +1,14 @@
+### Missing 3D models - created on 2025-04-10 17:21
+### Printed by checking_3D_models plugin
+Board file: D:/Ghost Division/Omni-X-II/Omni-X-II-PCB/Omni-X-II-PCB.kicad_pcb
+3D missing models written to:
+D:\Ghost Division\Omni-X-II\Omni-X-II-PCB\Omni-X-II-PCB_missing3Dmodels.txt
+-------
+('A1', 'D:\\Program Files\\KiCad\\9.0\\share\\kicad\\3dmodels\\Module.3dshapes\\Adafruit_Feather.wrl')
+('A2', 'D:\\Program Files\\KiCad\\9.0\\share\\kicad\\3dmodels\\Module.3dshapes\\Adafruit_Feather.wrl')
+('SW1', 'D:\\Program Files\\KiCad\\9.0\\share\\kicad\\3dmodels\\Button_Switch_THT.3dshapes\\SW_Slide-03_Wuerth-WS-SLTV_10x2.5x6.4_P2.54mm.wrl')
+('SW2', 'D:\\Program Files\\KiCad\\9.0\\share\\kicad\\3dmodels\\Button_Switch_THT.3dshapes\\SW_Slide-03_Wuerth-WS-SLTV_10x2.5x6.4_P2.54mm.wrl')
+('A3', 'D:\\Program Files\\KiCad\\9.0\\share\\kicad\\3dmodels\\Module.3dshapes\\Adafruit_Feather.wrl')
+-------
+NUM of 3D missing models:5
+checked extensions ['.stp', '.step', '.stpZ']
