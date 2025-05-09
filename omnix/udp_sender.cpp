@@ -16,14 +16,15 @@ void sendData() {
     StaticJsonDocument<512> msg;
 
     // === Sensor Data ===
-    msg["f"]  = distances[0];
-    msg["fl"] = distances[1];
-    msg["l"]  = distances[2];
-    msg["bl"] = distances[3];
-    msg["b"]  = distances[4];
-    msg["br"] = distances[5];
-    msg["r"]  = distances[6];
-    msg["fr"] = distances[7];
+    msg["f"]  = distances[0];  // Front
+    msg["fl"] = distances[1];  // Front-Left
+    msg["l"]  = distances[2];  // Left
+    msg["bl"] = distances[3];  // Back-Left
+    msg["b"]  = distances[4];  // Back
+    msg["br"] = distances[5];  // Back-Right
+    msg["r"]  = distances[6];  // Right
+    msg["fr"] = distances[7];  // Front-Right
+
 
     // === Motor Speeds ===
     msg["m1"] = current_m1;
@@ -56,19 +57,16 @@ void sendData() {
 
     // === INA219 Auto Read (optional) ===
     if (inaContinuous) {
-        Serial.println("⚡ INA auto-read enabled — reading INA219");
+        float current_ina60 = 0.0f;
+        float current_ina61 = 0.0f;
 
-        float current_ina60 = ina60.getCurrent_mA();
-        float current_ina61 = ina61.getCurrent_mA();
+        deselectAllMux();
+        selectMuxINA60();
+        current_ina60 = ina60.getCurrent_mA();
 
-        // Debug validation
-        if (isnan(current_ina60) || isnan(current_ina61)) {
-            Serial.println("❌ INA219 read failed: got NaN values");
-        } else {
-            Serial.printf("📊 INA219: INA60 = %.2f mA | INA61 = %.2f mA\n", current_ina60, current_ina61);
-        }
-
-        delayMicroseconds(300);  // Avoid back-to-back UDP issues
+        deselectAllMux();
+        selectMuxINA61();
+        current_ina61 = ina61.getCurrent_mA();
 
         StaticJsonDocument<256> reply;
         reply["ack"] = "ina_data";
@@ -77,12 +75,8 @@ void sendData() {
 
         char inaJson[256];
         serializeJson(reply, inaJson);
-
-        if (xSemaphoreTake(wifiSemaphore, pdMS_TO_TICKS(50))) {
-            udp.beginPacket(laptop_ip, udp_port);
-            udp.write((const uint8_t*)inaJson, strlen(inaJson));
-            udp.endPacket();
-            xSemaphoreGive(wifiSemaphore);
-        }
+        udp.beginPacket(laptop_ip, udp_port);
+        udp.write((const uint8_t*)inaJson, strlen(inaJson));
+        udp.endPacket();
     }
 }

@@ -15,45 +15,53 @@
 
 void setup() {
     Serial.begin(115200);
+    Serial.println("🛠️ Booting system...");
 
+    // === Create I2C Semaphores ===
     i2cBusyWire0 = xSemaphoreCreateMutex();
     i2cBusyWire1 = xSemaphoreCreateMutex();
 
-    Wire.begin();
-    Wire.setClock(400000);
-    Wire1.begin(15, 14, 400000); // Motor shields on Wire1
+    // === I2C Setup ===
+    Wire.begin();                     // Wire0 → Sensors, MUX, INA219
+    Wire.setClock(400000);           // 400kHz Fast Mode
+    Wire1.begin(15, 14, 400000);     // Wire1 → Motor shields
 
-    setupWiFi();
-    setupMux();
-    setupSensors();
-    setupMotors();
-    checkMotorShields(true);
-    setupParams();
-    controllerSetup();
-    setupIMU();
+    // === Core Init ===
+    setupWiFi();                     // AP/STA WiFi mode
+    setupMux();                      // MUX chip
 
+    setupParams();                   // Load thresholds & filtering
+    applyThresholdsToSensors();      // Push thresholds to sensors
+    setupSensors();                  // Init VL53L4CDs with fallback
+    setupMotors();                   // Adafruit Motor Shield
+    checkMotorShields(true);         // Optional test
+
+    controllerSetup();              // Xbox/PS4 controller via BLE
+    setupIMU();                     // LSM6DSOX (optional)
+
+    // === INA219 Power Monitoring ===
     deselectAllMux();
-    selectMuxINA60(); delay(2);
-    ina60.begin();
+    selectMuxINA60(); delay(2); ina60.begin();
     deselectAllMux();
-    selectMuxINA61(); delay(2);
-    ina61.begin();
+    selectMuxINA61(); delay(2); ina61.begin();
 
-    // Interrupts before tasks
+    // === Attach Sensor Interrupts ===
     setupSensorInterrupts();
 
-    // Start ranging after init
+    // === Start Sensors ===
     startAllSensors();
 
-    // Start tasks
-    xTaskCreate(sensorTask,     "SensorTask",     8192, nullptr, 1, &sensorTaskHandle);
+    // === Prioritized Task Launch ===
+    xTaskCreatePinnedToCore(sensorTask,     "SensorTask",     8192, nullptr, 4, &sensorTaskHandle, 0);
+    xTaskCreatePinnedToCore(steeringTask,   "SteeringTask",   8192, nullptr, 3, nullptr, 1);
+    xTaskCreatePinnedToCore(motorTask,      "MotorTask",      8192, nullptr, 2, nullptr, 1);
     xTaskCreate(controllerTask, "ControllerTask", 8192, nullptr, 1, nullptr);
-    xTaskCreate(motorTask,      "MotorTask",      8192, nullptr, 1, nullptr);
     xTaskCreate(auxTask,        "AuxTask",        8192, nullptr, 1, nullptr);
+
 
     Serial.println("🚀 Setup complete — system is now running!");
 }
 
 void loop() {
-    // Everything is handled by FreeRTOS
+    // Everything runs in tasks
 }

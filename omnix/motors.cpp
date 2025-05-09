@@ -10,7 +10,7 @@ void setupMotors() {
         xSemaphoreGive(i2cBusyWire1);
     }
 
-    motor1 = AFMS_61.getMotor(1);  // Right-Back
+    motor1 = AFMS_61.getMotor(4);  // Right-Back
     motor2 = AFMS_60.getMotor(1);  // Front-Left
     motor3 = AFMS_60.getMotor(3);  // Left-Back
     motor4 = AFMS_61.getMotor(3);  // Front-Right
@@ -63,7 +63,7 @@ void checkMotorShields(bool doMotorTest) {
         xSemaphoreGive(i2cBusyWire1);
     }
 
-    motor1 = AFMS_61.getMotor(1);
+    motor1 = AFMS_61.getMotor(4);
     motor2 = AFMS_60.getMotor(1);
     motor3 = AFMS_60.getMotor(3);
     motor4 = AFMS_61.getMotor(3);

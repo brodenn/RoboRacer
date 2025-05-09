@@ -70,4 +70,3 @@ void handleController() {
         xSemaphoreGive(i2cBusyWire1);
     }
 }
-

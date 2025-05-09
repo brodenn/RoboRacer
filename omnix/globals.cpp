@@ -63,9 +63,6 @@ const uint8_t SENSOR_GPIO[NUM_SENSORS] = {
     27   // 7: Front-Right  (MUX ch 3)
 };
 
-
-
-
 // --- Trigger flags updated via ISR ---
 volatile bool sensorTriggered[NUM_SENSORS] = {false};
 
@@ -100,8 +97,8 @@ int INVALID_DISTANCE = 2000;
 // INA219
 // ----------------------
 
-Adafruit_INA219 ina60(0x40);  // Front INA219
-Adafruit_INA219 ina61(0x41);  // Back INA219
+Adafruit_INA219 ina60(0x40);
+Adafruit_INA219 ina61(0x40);
 
 // ----------------------
 // Timing
@@ -117,7 +114,6 @@ const int sendInterval = 250;      // Master send interval for all UDP data
 // ----------------------
 
 ControlMode controlMode = MODE_AUTONOMOUS;
-SteeringParams params;
 
 // ----------------------
 // IMU

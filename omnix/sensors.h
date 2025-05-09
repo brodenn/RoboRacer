@@ -30,8 +30,8 @@ extern int INVALID_DISTANCE;
 // --- Core Functions ---
 void setupSensors();
 void readSensors();
-void restartSensor(uint8_t i);  // Used once during setup for each sensor
+void restartSensor(uint8_t i);
 void startAllSensors();
-
+void applyThresholdsToSensors();  // ✅ NEW: Apply default detection thresholds
 
 #endif

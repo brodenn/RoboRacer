@@ -10,12 +10,19 @@ int sensorFailCounter[NUM_SENSORS] = {0};
 int sensorConsecutiveFails[NUM_SENSORS] = {0};
 bool sensorSoftFailed[NUM_SENSORS] = {false};
 bool sensorsUpdated = false;
+unsigned long lastSensorTriggerTime[NUM_SENSORS] = {0};
 
 void setupSensors() {
     for (uint8_t i = 0; i < NUM_SENSORS; i++) {
         sensorFailCounter[i] = 0;
         sensorConsecutiveFails[i] = 0;
         sensorSoftFailed[i] = false;
+        lastSensorTriggerTime[i] = millis();
+
+        distances[i] = (i == 0) ? params.threshold_front + 400 :
+                       (i == 3 || i == 4 || i == 5) ? params.threshold_back + 400 :
+                       params.threshold_side + 400;
+
         restartSensor(i);
     }
 }
@@ -26,7 +33,6 @@ void restartSensor(uint8_t i) {
     deselectAllMux();
     delay(2);
     selectMuxChannel(i);
-    delay(5);
     delay(10);
 
     if (xSemaphoreTake(i2cBusyWire0, pdMS_TO_TICKS(30)) == pdTRUE) {
@@ -42,17 +48,11 @@ void restartSensor(uint8_t i) {
             if (sensor.VL53L4CD_SensorInit() == 0) {
                 sensor.VL53L4CD_SetRangeTiming(200, 0);
 
-                // === Corrected threshold selection ===
-                int threshold = 400;
-                if (i == 0) { // Front
-                    threshold = params.threshold_front;
-                } else if (i == 3 || i == 4 || i == 5) { // Back-Left, Back, Back-Right
-                    threshold = params.threshold_back;
-                } else { // Front-Left, Left, Right, Front-Right
-                    threshold = params.threshold_side;
-                }
+                int threshold = (i == 0) ? params.threshold_front :
+                                (i == 3 || i == 4 || i == 5) ? params.threshold_back :
+                                params.threshold_side;
 
-                sensor.VL53L4CD_SetDetectionThresholds(0, threshold, 1);  // interrupt when below high
+                sensor.VL53L4CD_SetDetectionThresholds(0, threshold, params.windowMode);
                 ok = true;
             }
         }
@@ -87,81 +87,88 @@ void readSensors() {
 
     sensorsUpdated = false;
     VL53L4CD_Result_t results;
-    int failedCount = 0;
 
     for (uint8_t i = 0; i < NUM_SENSORS; i++) {
-        if (!sensorTriggered[i]) continue;
-        sensorTriggered[i] = false;
+        bool handled = false;
 
-        deselectAllMux();
-        delayMicroseconds(100);
-        selectMuxChannel(i);
-        delayMicroseconds(500);
+        if (sensorTriggered[i]) {
+            sensorTriggered[i] = false;
+            unsigned long triggerAge = millis() - lastSensorTriggerTime[i];
+            lastSensorTriggerTime[i] = millis();
 
-        bool gotI2C = false;
-        for (int retry = 0; retry < 3; retry++) {
-            if (xSemaphoreTake(i2cBusyWire0, pdMS_TO_TICKS(10)) == pdTRUE) {
-                gotI2C = true;
-                break;
+            if (triggerAge > 300) {
+                Serial.printf("⚠️  Sensor %d interrupt delay: %lu ms\n", i, triggerAge);
             }
-            delay(1);
-        }
 
-        if (!gotI2C) {
-            sensorSoftFailed[i] = true;
-        } else {
-            uint8_t newDataReady = 0;
-            bool gotData = false;
+            deselectAllMux();
+            delayMicroseconds(100);
+            selectMuxChannel(i);
+            delayMicroseconds(500);
 
-            for (int attempt = 0; attempt < 3; attempt++) {
-                if (sensor.VL53L4CD_CheckForDataReady(&newDataReady) == 0 && newDataReady) {
-                    gotData = true;
+            bool gotI2C = false;
+            for (int retry = 0; retry < 3; retry++) {
+                if (xSemaphoreTake(i2cBusyWire0, pdMS_TO_TICKS(10)) == pdTRUE) {
+                    gotI2C = true;
                     break;
                 }
-                delayMicroseconds(800);
+                delay(1);
             }
 
-            if (gotData && sensor.VL53L4CD_GetResult(&results) == 0) {
-                sensorConsecutiveFails[i] = 0;
-                sensor.VL53L4CD_ClearInterrupt();
+            if (!gotI2C) {
+                Serial.printf("🧱 Sensor %d I2C semaphore timeout\n", i);
+                sensorSoftFailed[i] = true;
+            } else {
+                uint8_t newDataReady = 0;
+                bool gotData = false;
 
-                uint16_t newDistance = results.distance_mm;
-                uint16_t signal = results.signal_rate_kcps;
-                uint16_t sigma = results.sigma_mm;
-
-                bool unreliable = (sigma > MAX_RELIABLE_SIGMA) ||
-                                  (signal < MIN_SIGNAL_THRESHOLD) ||
-                                  (newDistance > MAX_VALID_DISTANCE);
-
-                if (!unreliable) {
-                    distances[i] = newDistance;
-                    sensorSoftFailed[i] = false;
-                    sensorsUpdated = true;
-                    xSemaphoreGive(i2cBusyWire0);
-                    continue;
+                for (int attempt = 0; attempt < 3; attempt++) {
+                    if (sensor.VL53L4CD_CheckForDataReady(&newDataReady) == 0 && newDataReady) {
+                        gotData = true;
+                        break;
+                    }
+                    delayMicroseconds(800);
                 }
 
-                sensorSoftFailed[i] = true;  // Unreliable data
-            } else {
-                sensorConsecutiveFails[i]++;
-                sensorSoftFailed[i] = true;  // Data not ready or read failed
+                if (gotData && sensor.VL53L4CD_GetResult(&results) == 0) {
+                    sensor.VL53L4CD_ClearInterrupt();
+
+                    uint16_t newDistance = results.distance_mm;
+                    uint16_t signal = results.signal_rate_kcps;
+                    uint16_t sigma = results.sigma_mm;
+
+                    bool reliable = (sigma <= MAX_RELIABLE_SIGMA) &&
+                                    (signal >= MIN_SIGNAL_THRESHOLD) &&
+                                    (newDistance <= MAX_VALID_DISTANCE) &&
+                                    (newDistance > 0);
+
+                    if (reliable) {
+                        distances[i] = newDistance;
+                        sensorSoftFailed[i] = false;
+                        sensorsUpdated = true;
+                        handled = true;
+                        Serial.printf("✅ Sensor %d: %d mm (sig=%d, σ=%d)\n", i, newDistance, signal, sigma);
+                    } else {
+                        sensorSoftFailed[i] = true;
+                        Serial.printf("❌ Sensor %d unreliable: %d mm (sig=%d, σ=%d)\n", i, newDistance, signal, sigma);
+                    }
+                } else {
+                    sensorSoftFailed[i] = true;
+                    sensorConsecutiveFails[i]++;
+                    Serial.printf("❌ Sensor %d read failed (data=%s)\n", i, gotData ? "yes" : "no");
+                }
+
+                xSemaphoreGive(i2cBusyWire0);
             }
-
-            xSemaphoreGive(i2cBusyWire0);
         }
 
-        // === Corrected fallback logic ===
-        int fallbackDistance = params.INVALID_DISTANCE;
-        if (i == 0) {
-            fallbackDistance = params.threshold_front + 200;
-        } else if (i == 3 || i == 4 || i == 5) {
-            fallbackDistance = params.threshold_back + 200;
-        } else {
-            fallbackDistance = params.threshold_side + 200;
+        // === Fallback: No interrupt in time ===
+        const unsigned long timeoutMs = 350;
+        if (!handled && millis() - lastSensorTriggerTime[i] > timeoutMs) {
+            distances[i] = 2000;
+            sensorSoftFailed[i] = true;
+            Serial.printf("🛑 Sensor %d fallback timeout → 2000 mm\n", i);
         }
-
-        distances[i] = fallbackDistance;
     }
-
-    allSensorsFailed = (failedCount >= NUM_SENSORS);
 }
+
+

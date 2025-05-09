@@ -44,6 +44,9 @@ struct SteeringParams {
     float alignCorrectionStrength;
     int backAvoidThreshold;
 
+    // --- ✅ Sensor window mode ---
+    int windowMode;
+
     void loadFromJson(ArduinoJson::JsonDocument& doc);
 };
 

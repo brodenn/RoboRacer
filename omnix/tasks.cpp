@@ -38,34 +38,48 @@ void sensorTask(void* pvParameters) {
     }
 }
 
-// 🎮 ControllerTask: processes gamepad/controller input
-void controllerTask(void* pvParameters) {
+// 🧠 SteeringTask: runs AI steering logic
+void steeringTask(void* pvParameters) {
     TickType_t lastWake = xTaskGetTickCount();
+    Serial.println("🧠 SteeringTask started");
     while (true) {
-        handleController();
-        vTaskDelayUntil(&lastWake, pdMS_TO_TICKS(10));  // Run every 10 ms
-    }
-}
-
-// 🛞 MotorTask: smooth step motor control
-void motorTask(void* pvParameters) {
-    TickType_t lastWake = xTaskGetTickCount();
-    while (true) {
-        smoothMotorUpdate();
+        if (motorsEnabled && controlMode == MODE_AUTONOMOUS) {
+            aiSteering();  // Decide target motor speeds
+        }
         vTaskDelayUntil(&lastWake, pdMS_TO_TICKS(20));  // Run every 20 ms
     }
 }
 
-// 🧠 AuxTask: background logic — IMU, AI steering, and data sending
+// 🛞 MotorTask: applies smoothed motor updates
+void motorTask(void* pvParameters) {
+    TickType_t lastWake = xTaskGetTickCount();
+    Serial.println("🛞 MotorTask started");
+    while (true) {
+        smoothMotorUpdate();  // Apply speed to motors
+        vTaskDelayUntil(&lastWake, pdMS_TO_TICKS(20));
+    }
+}
+
+// 🎮 ControllerTask: handles gamepad/controller input
+void controllerTask(void* pvParameters) {
+    TickType_t lastWake = xTaskGetTickCount();
+    Serial.println("🎮 ControllerTask started");
+    while (true) {
+        handleController();
+        vTaskDelayUntil(&lastWake, pdMS_TO_TICKS(10));
+    }
+}
+
+// 🧰 AuxTask: handles IMU, param updates, restarts, telemetry
 void auxTask(void* pvParameters) {
     TickType_t lastWake = xTaskGetTickCount();
+    Serial.println("🧰 AuxTask started");
     while (true) {
         loopCounter++;
 
-        handleUdpParams();  // Receive live param updates
-        readIMU();
+        handleUdpParams();  // Receive param updates via UDP
+        readIMU();          // Read IMU (if enabled)
 
-        // Restart sensors if requested
         for (uint8_t i = 0; i < NUM_SENSORS; i++) {
             if (needsRestart[i]) {
                 restartSensor(i);
@@ -73,11 +87,7 @@ void auxTask(void* pvParameters) {
             }
         }
 
-        if (motorsEnabled && controlMode == MODE_AUTONOMOUS) {
-            aiSteering();
-        }
-
-        sendData();  // Send UDP telemetry
-        vTaskDelayUntil(&lastWake, pdMS_TO_TICKS(20));  // Run every 20 ms
+        sendData();  // Send telemetry back over UDP
+        vTaskDelayUntil(&lastWake, pdMS_TO_TICKS(20));
     }
 }

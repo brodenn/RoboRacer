@@ -5,136 +5,103 @@
 #include "sensors.h"
 #include <Arduino.h>
 
-// === Sensor Indexes ===
-const int FRONT        = 1;
-const int FRONT_LEFT   = 3;
-const int FRONT_RIGHT  = 2;
-const int LEFT         = 0;
-const int RIGHT        = 5;
-const int BACK_LEFT    = 4;
-const int BACK         = 6;
-const int BACK_RIGHT   = 7;
+// Sensor index mapping
+const int FRONT        = 0;
+const int FRONT_LEFT   = 1;
+const int LEFT         = 2;
+const int BACK_LEFT    = 3;
+const int BACK         = 4;
+const int BACK_RIGHT   = 5;
+const int RIGHT        = 6;
+const int FRONT_RIGHT  = 7;
 
-// === Helper Functions ===
 bool isValid(int dist) {
     return dist < INVALID_DISTANCE;
 }
 
-bool isTooClose(int dist, int threshold) {
-    return isValid(dist) && dist < threshold;
+// Safe fallback for missing sensor values
+int safeRead(int dist) {
+    return isValid(dist) ? dist : 2000;
 }
 
-bool shouldReverse(int front) {
-    return isTooClose(front, params.threshold_front);
-}
-
-float computeCenteringCorrection(int left, int right) {
-    if (!isValid(left) || !isValid(right)) return 0.0;
-    float delta = float(right - left);
-    return delta * params.centeringStrength;
-}
-
-float computeCurveAdjustment(int fl, int fr, int left, int right) {
-    float adjust = 0.0;
-    if (isValid(fl) && fl < params.threshold_side && left > fl)
-        adjust += params.curveAnticipationStrength * (params.steeringSensitivity / 2);
-    if (isValid(fr) && fr < params.threshold_side && right > fr)
-        adjust -= params.curveAnticipationStrength * (params.steeringSensitivity / 2);
-    return adjust;
-}
-
-float computeBackAlignment(int bl, int br) {
-    if (isValid(bl) && isValid(br)) {
-        int delta = bl - br;
-        if (abs(delta) > 60)
-            return delta * params.alignCorrectionStrength;
-    }
-    return 0.0;
-}
-
-float computeBackAvoidPush(int bl, int br) {
-    if (isValid(bl) && isValid(br) &&
-        bl < params.backAvoidThreshold && br < params.backAvoidThreshold) {
-        int push = params.backAvoidThreshold - min(bl, br);
-        return push * params.backAvoidStrength;
-    }
-    return 0.0;
-}
-
-// === Main Steering Logic ===
 void aiSteering() {
-    // Sensor readings
-    int front      = distances[FRONT];
-    int frontLeft  = distances[FRONT_LEFT];
-    int frontRight = distances[FRONT_RIGHT];
-    int left       = distances[LEFT];
-    int right      = distances[RIGHT];
-    int backLeft   = distances[BACK_LEFT];
-    int back       = distances[BACK];
-    int backRight  = distances[BACK_RIGHT];
+    auto safeRead = [](int dist) {
+        return isValid(dist) ? dist : 2000;
+    };
 
-    // Speed setup
+    int front      = safeRead(distances[FRONT]);
+    int frontLeft  = safeRead(distances[FRONT_LEFT]);
+    int frontRight = safeRead(distances[FRONT_RIGHT]);
+    int left       = safeRead(distances[LEFT]);
+    int right      = safeRead(distances[RIGHT]);
+    int backLeft   = safeRead(distances[BACK_LEFT]);
+    int backRight  = safeRead(distances[BACK_RIGHT]);
+
     float speedMultiplier = params.speedMultiplier;
-    int forwardSpeed = int(params.baseSpeedFactor * speedMultiplier);
+    int baseSpeed = int(params.baseSpeedFactor * speedMultiplier);
     int reverseSpeed = int(params.slowSpeedFactor * speedMultiplier);
+    const int minDriveSpeed = 60;
+    const int minSteerSpeed = 30;
 
-    // === Reversing ===
-    if (!reversing && shouldReverse(front)) {
+    // === Print sensors ===
+    Serial.printf("📡 Sensors | F=%d FL=%d FR=%d L=%d R=%d\n", front, frontLeft, frontRight, left, right);
+
+    // === Reverse ===
+    if (!reversing && front < 150) {
         reversing = true;
         reverseStart = millis();
+        Serial.printf("⛔ Reverse triggered | front = %d mm\n", front);
     }
 
     if (reversing) {
         if (millis() - reverseStart < reverseTime) {
-            bool turnRight = isValid(backLeft) && (!isValid(backRight) || backLeft < backRight);
+            bool turnRight = backLeft < backRight;
             int fast = -reverseSpeed;
             int slow = -reverseSpeed / 2;
-            target_m1 = target_m2 = turnRight ? fast : slow;
-            target_m3 = target_m4 = turnRight ? slow : fast;
+            target_m1 = target_m4 = turnRight ? fast : slow;
+            target_m2 = target_m3 = turnRight ? slow : fast;
             smoothMotorUpdate();
             return;
         } else {
             reversing = false;
+            Serial.println("✅ Reverse complete");
         }
     }
 
-    // === Forward Steering ===
-    float leftSpeed  = forwardSpeed;
-    float rightSpeed = forwardSpeed;
+    // === Centering logic ===
+    int delta = right - left;
+    int closest = min(left, right);
+    float proximity = 1.0f - float(min(closest, 1200)) / 1200.0f;
+    float strength = pow(proximity, 2);
+    float balance = float(delta) / 1200.0f;
+    float correction = strength * balance * 120.0f * params.centeringStrength;
 
-    // Centering between walls
-    float centering = computeCenteringCorrection(left, right);
-    leftSpeed  -= centering;
-    rightSpeed += centering;
+    // === Curve hints ===
+    if (frontLeft < 800)  correction += params.curveAnticipationStrength;
+    if (frontRight < 800) correction -= params.curveAnticipationStrength;
 
-    // Curve anticipation
-    float curve = computeCurveAdjustment(frontLeft, frontRight, left, right);
-    leftSpeed  -= curve;
-    rightSpeed += curve;
+    correction = constrain(correction, -90.0f, 90.0f);
 
-    // Back alignment
-    float align = computeBackAlignment(backLeft, backRight);
-    leftSpeed  -= align;
-    rightSpeed += align;
+    float leftSpeed = baseSpeed;
+    float rightSpeed = baseSpeed;
 
-    // Back push-away correction
-    float backPush = computeBackAvoidPush(backLeft, backRight);
-    leftSpeed  -= backPush;
-    rightSpeed -= backPush;
-
-    // === Fallback
-    if (!isValid(front) && !isValid(left) && !isValid(right)) {
-        leftSpeed = rightSpeed = 30; // cautious mode
+    if (correction > 0) {
+        leftSpeed -= correction;
+    } else {
+        rightSpeed += correction;
     }
 
-    // Clamp and apply
-    leftSpeed  = constrain(leftSpeed, 30, 255);
-    rightSpeed = constrain(rightSpeed, 30, 255);
+    leftSpeed  = constrain(leftSpeed, minSteerSpeed, 255);
+    rightSpeed = constrain(rightSpeed, minSteerSpeed, 255);
 
     target_m1 = rightSpeed;
-    target_m2 = rightSpeed;
+    target_m4 = rightSpeed;
+    target_m2 = leftSpeed;
     target_m3 = leftSpeed;
-    target_m4 = leftSpeed;
+
+    Serial.printf("🚗 Speed | Left=%.1f Right=%.1f | Δ=%.1f (prox²=%.2f)\n",
+                  leftSpeed, rightSpeed, correction, strength);
 
     smoothMotorUpdate();
 }
+

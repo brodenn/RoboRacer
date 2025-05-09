@@ -30,7 +30,7 @@ void handleUdpParams() {
         return;
     }
 
-    // Load parameters if present
+    // Load parameters
     params.loadFromJson(doc);
     modeChanged = false;
 
@@ -68,19 +68,8 @@ void handleUdpParams() {
 
         } else if (strcmp(cmd, "ina_auto_read") == 0 && doc.containsKey("state")) {
             inaContinuous = doc["state"];
+            Serial.printf("🔄 Auto INA Read: %s\n", inaContinuous ? "ENABLED" : "DISABLED");
 
-            StaticJsonDocument<128> reply;
-            reply["ack"] = "ina_auto_read";
-            reply["state"] = inaContinuous;
-
-            char json[128];
-            serializeJson(reply, json);
-            udp.beginPacket(laptop_ip, udp_port);
-            udp.write((const uint8_t*)json, strlen(json));
-            udp.endPacket();
-
-        } else if (strcmp(cmd, "toggle_ina_auto_read") == 0) {
-            inaContinuous = !inaContinuous;
             StaticJsonDocument<128> reply;
             reply["ack"] = "ina_auto_read";
             reply["state"] = inaContinuous;
@@ -98,10 +87,12 @@ void handleUdpParams() {
             if (xSemaphoreTake(i2cBusyWire0, pdMS_TO_TICKS(20)) == pdTRUE) {
                 deselectAllMux();
                 selectMuxINA60();
+                //delayMicroseconds(300);  // Can be reduced or replaced if async
                 current_ina60 = ina60.getCurrent_mA();
 
                 deselectAllMux();
                 selectMuxINA61();
+                //delayMicroseconds(300);
                 current_ina61 = ina61.getCurrent_mA();
 
                 xSemaphoreGive(i2cBusyWire0);
@@ -120,6 +111,7 @@ void handleUdpParams() {
             udp.write((const uint8_t*)json, strlen(json));
             udp.endPacket();
 
+            Serial.printf("✅ Manual INA: INA60 = %.2f mA | INA61 = %.2f mA\n", current_ina60, current_ina61);
 
         } else {
             Serial.printf("⚠️ Unknown command: %s\n", cmd);
@@ -149,3 +141,4 @@ void handleUdpParams() {
         Serial.printf("📤 Sent MODE ACK: %s\n", reply["mode"].as<const char*>());
     }
 }
+
