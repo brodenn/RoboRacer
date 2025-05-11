@@ -1,6 +1,7 @@
 #include "opt.h"
 
 OPT3101 opt;
+uint16_t optDistances[3] = {9999, 9999, 9999};  // vänster, front, höger
 
 void initOPT() {
   opt.setAddress(0x58);  // standard
@@ -11,7 +12,7 @@ void initOPT() {
     return;
   }
 
-  opt.setFrameTiming(256);  // stabil uppdatering
+  opt.setFrameTiming(512);  // stabil uppdatering
   opt.setBrightness(OPT3101Brightness::Adaptive);
 
   Serial.println("✅ OPT3101 initierad");
@@ -30,6 +31,7 @@ OptStatus checkOptObstacles() {
   for (int ch = 0; ch < 3; ch++) {
     opt.setChannel(ch);
     opt.sample();  // använder samma som i testkod
+    //optDistances[ch] = dist;
 
     uint16_t dist = opt.distanceMillimeters;
     uint16_t amp  = opt.amplitude;
@@ -50,16 +52,16 @@ OptStatus checkOptObstacles() {
       continue;
     }
 
-    // Riktning: ch 1 = FRONT, ch 2 = LEFT, ch 0 = RIGHT (verifierat från test)
+    // Riktning: ch 1 = FRONT, ch 0 = LEFT, ch 2 = RIGHT (verifierat från test)
     if (ch == 1 && dist < CRIT_FRONT) {
       Serial.println("✅ OPT: FRONT kritisk");
       lastCritical = OPT_CRITICAL_FRONT;
     }
-    if (ch == 2 && dist < CRIT_LEFT && lastCritical == OPT_CLEAR) {
+    if (ch == 0 && dist < CRIT_LEFT && lastCritical == OPT_CLEAR) {
       Serial.println("✅ OPT: VÄNSTER kritisk");
       lastCritical = OPT_CRITICAL_LEFT;
     }
-    if (ch == 0 && dist < CRIT_RIGHT && lastCritical == OPT_CLEAR) {
+    if (ch == 2 && dist < CRIT_RIGHT && lastCritical == OPT_CLEAR) {
       Serial.println("✅ OPT: HÖGER kritisk");
       lastCritical = OPT_CRITICAL_RIGHT;
     }

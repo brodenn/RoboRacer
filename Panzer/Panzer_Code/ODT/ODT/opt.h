@@ -1,13 +1,8 @@
 #ifndef OPT_H
 #define OPT_H
 
-#include <Wire.h>
-#include "OPT3101.h"  // Pololu-klassen
-
-// === Kritisk riktning för Panzer-logik ===
-// CH 0 = HÖGER
-// CH 1 = FRAM
-// CH 2 = VÄNSTER
+#include <Arduino.h>
+#include "OPT3101.h"
 
 enum OptStatus {
   OPT_CLEAR,
@@ -16,10 +11,11 @@ enum OptStatus {
   OPT_CRITICAL_RIGHT
 };
 
-// Globala instanser och funktioner
-extern OPT3101 opt;
+void initOPT();
+OptStatus checkOptObstacles();
 
-void initOPT();              // Initierar OPT3101 med testade värden
-OptStatus checkOptObstacles();  // Kör sample() för varje kanal och returnerar status
+// 👇 Lägg till detta för global åtkomst i .ino
+extern OPT3101 opt;
+extern uint16_t optDistances[3];
 
 #endif

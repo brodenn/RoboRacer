@@ -1,104 +1,154 @@
 #include <Wire.h>
 #include <Adafruit_MotorShield.h>
+#include "mux.h"
 #include "opt.h"
 
+// === Motorinstanser ===
 Adafruit_MotorShield AFMS = Adafruit_MotorShield(0x60);
 Adafruit_DCMotor *motorLeft = AFMS.getMotor(3);
 Adafruit_DCMotor *motorRight = AFMS.getMotor(4);
 
-enum Mode { MODE_FORWARD, MODE_REVERSE, MODE_ROTATE };
-Mode currentMode = MODE_FORWARD;
+// === PWM-gränser ===
+const uint8_t BASE_SPEED = 160;
+const int MAX_CORRECTION = 100;
 
+// === Tidskontroll ===
 unsigned long avoidUntil = 0;
 
+// === Setup ===
 void setup() {
   Serial.begin(115200);
   Wire.begin();
   Wire.setClock(400000);
   AFMS.begin();
   initOPT();
+  initVL53Sensors();
+  Serial.println("🚗 Panzer redo");
 }
 
 void loop() {
-  unsigned long now = millis();
-  if (now < avoidUntil) return;
+  if (millis() < avoidUntil) return;  // vänta ut back/rotation
 
-  // === Läs avstånd
-  float dFront = readChannel(1);
-  float dRight = readChannel(2);
-  float dLeft  = readChannel(0);
+  // === Läs sensorer ===
+  OptStatus optStatus = checkOptObstacles();
+  MuxStatus muxStatus = checkVL53Obstacles();  // detta måste köras
 
-  // === Smart backlogik
-  if (dFront < 120 && dLeft < 200 && dRight < 200) {
-    Serial.println("🧠 TRÅNGT! Backar och roterar mot öppen sida.");
-    backUp(200, 800);
-    if (dLeft > dRight) rotateLeft(800);
-    else rotateRight(800);
+  uint16_t front  = opt.distanceMillimeters;
+  uint16_t optL   = opt.amplitude; // kanal 0
+  uint16_t optR   = opt.amplitude; // kanal 2 – används ej direkt här
+
+  uint16_t vlL = vl53Distances[0]; // vänster
+  uint16_t vlR = vl53Distances[1]; // höger
+
+  // === Visa VL53-mätvärden
+  Serial.print("📏 VL53: Vänster = ");
+  Serial.print(vlL);
+  Serial.print(" mm | Höger = ");
+  Serial.println(vlR);
+
+  // === VL53 prioritet om < 100 mm
+  if (vlL > 0 && vlL < 100) {
+    Serial.println("⚠️ VL53: Vägg nära vänster → sväng höger");
+    turnRightSoft(vlL);
+    return;
+  }
+  if (vlR > 0 && vlR < 100) {
+    Serial.println("⚠️ VL53: Vägg nära höger → sväng vänster");
+    turnLeftSoft(vlR);
     return;
   }
 
-  // === Fartstyrning: framåt ju mer plats
-  int baseSpeed = map(constrain(dFront, 200, 1500), 200, 1500, 100, 255);
+  // === Kritisk frontavstånd
+  if (front < 100 && front > 0) {
+    Serial.println("🚨 Front nära (<100 mm) → väljer bäst riktning");
 
-  // === Riktningsstyrning: skillnad vänster-höger
-  float balance = dLeft - dRight; // positiv = mer plats vänster
-  int turn = constrain((int)(balance / 10.0), -80, 80); // skala till PWM-justering
+    if (opt.distanceMillimeters == 0) return;
 
-  int pwmL = constrain(baseSpeed - turn, 0, 255);
-  int pwmR = constrain(baseSpeed + turn, 0, 255);
+    if (optR > optL) {
+      rotateLeft(600);
+    } else {
+      backUp(180, 180, 500);
+    }
+    return;
+  }
 
-  // === Kör framåt med styrkompensation
-  motorLeft->setSpeed(pwmL);
-  motorRight->setSpeed(pwmR);
+  // === Adaptiv riktning – beräkna styrsignal
+  int16_t steer = ((int16_t)vlL - (int16_t)vlR) * 0.8;
+  steer = constrain(steer, -MAX_CORRECTION, MAX_CORRECTION);
+
+  // === PWM-justering
+  int pwmLeft  = constrain(BASE_SPEED - steer, 0, 255);
+  int pwmRight = constrain(BASE_SPEED + steer, 0, 255);
+
+  motorLeft->setSpeed(pwmLeft);
+  motorRight->setSpeed(pwmRight);
   motorLeft->run(FORWARD);
   motorRight->run(FORWARD);
-  currentMode = MODE_FORWARD;
 
-  Serial.print("▶️ PWM L="); Serial.print(pwmL);
-  Serial.print(" R="); Serial.print(pwmR);
-  Serial.print(" | Dist F="); Serial.print(dFront);
-  Serial.print(" L="); Serial.print(dLeft);
-  Serial.print(" R="); Serial.println(dRight);
+  Serial.print("▶️ Kör: L="); Serial.print(pwmLeft);
+  Serial.print(" R="); Serial.println(pwmRight);
 }
 
-// === Funktioner ===
-
-float readChannel(uint8_t ch) {
-  opt.setChannel(ch);
-  opt.startSample();
-  while (!opt.isSampleDone()) delay(1);
-  opt.readOutputRegs();
-  float dist = (float)opt.distanceMillimeters;
-  if (dist < 50 || dist > 8000) dist = 9999;
-  return dist;
-}
-
-void backUp(uint8_t speed, uint16_t duration) {
-  motorLeft->setSpeed(speed);
-  motorRight->setSpeed(speed);
+// === Backa med timer ===
+void backUp(uint8_t pwmL, uint8_t pwmR, uint16_t duration) {
+  motorLeft->setSpeed(pwmL);
+  motorRight->setSpeed(pwmR);
   motorLeft->run(BACKWARD);
   motorRight->run(BACKWARD);
-  Serial.println("🔙 BACKAR");
+  Serial.println("🔙 Backar");
   avoidUntil = millis() + duration;
-  currentMode = MODE_REVERSE;
 }
 
+// === Roterar vänster på stället ===
 void rotateLeft(uint16_t duration) {
   motorLeft->setSpeed(100);
   motorRight->setSpeed(100);
   motorLeft->run(BACKWARD);
   motorRight->run(FORWARD);
-  Serial.println("🔄 ROTERAR VÄNSTER");
+  Serial.println("🔄 Startar rotation V");
   avoidUntil = millis() + duration;
-  currentMode = MODE_ROTATE;
 }
 
+// === Roterar höger på stället ===
 void rotateRight(uint16_t duration) {
   motorLeft->setSpeed(100);
   motorRight->setSpeed(100);
   motorLeft->run(FORWARD);
   motorRight->run(BACKWARD);
-  Serial.println("🔁 ROTERAR HÖGER");
+  Serial.println("🔄 Startar rotation H");
   avoidUntil = millis() + duration;
-  currentMode = MODE_ROTATE;
+}
+
+float calcTurnFactor(uint16_t dist) {
+  if (dist == 0 || dist > 600) return 0.2;  // långt bort → mild styrning
+  if (dist < 100) return 1.0;               // extremt nära → skarp styrning
+  return 0.2 + (500.0 - dist) / 500.0 * 0.8;  // linjär mellan 0.2 och 1.0
+}
+
+void turnRightSoft(uint16_t dist) {
+  float factor = calcTurnFactor(dist);
+  int pwmL = constrain(BASE_SPEED + (int)(MAX_CORRECTION * factor), 0, 255);
+  int pwmR = constrain(BASE_SPEED - (int)(MAX_CORRECTION * factor), 0, 255);
+
+  motorLeft->setSpeed(pwmL);
+  motorRight->setSpeed(pwmR);
+  motorLeft->run(FORWARD);
+  motorRight->run(FORWARD);
+
+  Serial.print("➡️ Sväng höger: L="); Serial.print(pwmL);
+  Serial.print(" R="); Serial.println(pwmR);
+}
+
+void turnLeftSoft(uint16_t dist) {
+  float factor = calcTurnFactor(dist);
+  int pwmL = constrain(BASE_SPEED - (int)(MAX_CORRECTION * factor), 0, 255);
+  int pwmR = constrain(BASE_SPEED + (int)(MAX_CORRECTION * factor), 0, 255);
+
+  motorLeft->setSpeed(pwmL);
+  motorRight->setSpeed(pwmR);
+  motorLeft->run(FORWARD);
+  motorRight->run(FORWARD);
+
+  Serial.print("⬅️ Sväng vänster: L="); Serial.print(pwmL);
+  Serial.print(" R="); Serial.println(pwmR);
 }
