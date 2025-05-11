@@ -1,4 +1,4 @@
-#ifndef GLOBALS_H 
+#ifndef GLOBALS_H
 #define GLOBALS_H
 
 #include <Arduino.h>
@@ -24,8 +24,8 @@
 // Sensor Interrupts
 // ----------------------
 
-extern const uint8_t SENSOR_GPIO[NUM_SENSORS];         // GPIOs for INT pins
-extern volatile bool sensorTriggered[NUM_SENSORS];     // Flags set via ISR
+extern const uint8_t SENSOR_GPIO[NUM_SENSORS];
+extern volatile uint8_t sensorEvents[NUM_SENSORS];
 
 // ----------------------
 // WiFi & UDP
@@ -42,8 +42,8 @@ extern SemaphoreHandle_t wifiSemaphore;
 // I2C Mutexes
 // ----------------------
 
-extern SemaphoreHandle_t i2cBusyWire0;  // For sensors, MUX, INA
-extern SemaphoreHandle_t i2cBusyWire1;  // For motors
+extern SemaphoreHandle_t i2cBusyWire0;
+extern SemaphoreHandle_t i2cBusyWire1;
 
 // ----------------------
 // Motor Control

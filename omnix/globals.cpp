@@ -51,20 +51,19 @@ bool needsRestart[NUM_SENSORS] = {false};
 
 const int SENSOR_FAILURE_THRESHOLD = 5;
 
-// --- Sensor GPIO interrupt mapping (MATCHING muxMap[]) ---
+// Sensor GPIO interrupt mapping (MATCHING muxMap[])
 const uint8_t SENSOR_GPIO[NUM_SENSORS] = {
-    25,  // 0: Front        (MUX ch 4)
-    4,   // 1: Front-Left   (MUX ch 5)
-    32,  // 2: Left         (MUX ch 6)
-    19,  // 3: Back-Left    (MUX ch 7)
-    5,   // 4: Back         (MUX ch 0)
-    26,  // 5: Back-Right   (MUX ch 1)
-    33,  // 6: Right        (MUX ch 2)
-    27   // 7: Front-Right  (MUX ch 3)
+    25,  // 0: Front
+    4,   // 1: Front-Left
+    32,  // 2: Left
+    19,  // 3: Back-Left
+    5,   // 4: Back
+    26,  // 5: Back-Right
+    33,  // 6: Right
+    27   // 7: Front-Right
 };
 
-// --- Trigger flags updated via ISR ---
-volatile bool sensorTriggered[NUM_SENSORS] = {false};
+volatile uint8_t sensorEvents[NUM_SENSORS] = {0};
 
 // ----------------------
 // Reverse Mode
@@ -74,7 +73,7 @@ bool reversing = false;
 unsigned long reverseStart = 0;
 unsigned long closeFrontStart = 0;
 const int stuckDuration = 1200;
-const int reverseTime = 500;
+const int reverseTime = 2000;
 
 // ----------------------
 // Zigzag Locking
@@ -106,8 +105,8 @@ Adafruit_INA219 ina61(0x40);
 
 unsigned long lastSensorRead = 0;
 unsigned long lastDataSend = 0;
-const int sensorInterval = 10;     // Polling rate
-const int sendInterval = 250;      // Master send interval for all UDP data
+const int sensorInterval = 10;
+const int sendInterval = 250;
 
 // ----------------------
 // Mode Control

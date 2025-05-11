@@ -6,7 +6,8 @@
 #include "freertos/task.h"
 
 void IRAM_ATTR notifySensorTask(uint8_t index) {
-    sensorTriggered[index] = true;
+    if (index >= NUM_SENSORS) return;
+    sensorEvents[index]++;  // ✅ Count how many times this sensor triggered
 
     if (sensorTaskHandle != nullptr) {
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
@@ -41,6 +42,7 @@ void setupSensorInterrupts() {
 
     for (int i = 0; i < NUM_SENSORS; i++) {
         pinMode(SENSOR_GPIO[i], INPUT_PULLUP);
+        sensorEvents[i] = 0;  // ✅ Initialize to 0
         attachInterrupt(SENSOR_GPIO[i], sensorISRs[i], FALLING);
     }
 
