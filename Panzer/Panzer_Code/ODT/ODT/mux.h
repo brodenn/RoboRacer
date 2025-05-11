@@ -12,6 +12,8 @@ enum MuxStatus {
 
 void selectMuxChannel(uint8_t channel);
 void initVL53Sensors();              // ⬅️ ny init-funktion
+extern uint16_t vl53Distances[2];  // [0] = left, [1] = right
+
 MuxStatus checkVL53Obstacles();
 
 #endif

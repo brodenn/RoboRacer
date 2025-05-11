@@ -3,8 +3,7 @@
 OPT3101 opt;
 
 void initOPT() {
-  opt.setAddress(0x58);
-  opt.resetAndWait();
+  opt.setAddress(0x58);  // standard
   opt.init();
 
   if (opt.getLastError()) {
@@ -12,55 +11,59 @@ void initOPT() {
     return;
   }
 
-  opt.configureDefault();
+  opt.setFrameTiming(256);  // stabil uppdatering
   opt.setBrightness(OPT3101Brightness::Adaptive);
-  opt.setMonoshotMode();
-  opt.setFrameTiming(1);
 
   Serial.println("✅ OPT3101 initierad");
 }
 
 OptStatus checkOptObstacles() {
-  // Realistiska tröskelvärden i mm
-  const uint16_t CRIT_FRONT  = 120;
-  const uint16_t CRIT_LEFT   = 100;
-  const uint16_t CRIT_RIGHT  = 100;
+  const uint16_t CRIT_FRONT  = 300;
+  const uint16_t CRIT_LEFT   = 400;
+  const uint16_t CRIT_RIGHT  = 400;
+
+  const uint16_t MIN_AMPLITUDE = 50;
+  const uint16_t MAX_DISTANCE  = 4000;
+
+  OptStatus lastCritical = OPT_CLEAR;
 
   for (int ch = 0; ch < 3; ch++) {
     opt.setChannel(ch);
-    opt.startSample();
-    while (!opt.isSampleDone()) delay(1);
-    opt.readOutputRegs();
+    opt.sample();  // använder samma som i testkod
 
-    // ✅ OPT3101: amplitude = faktiskt avstånd
-    uint16_t dist = opt.amplitude;
-    uint16_t amp  = opt.distanceMillimeters;
+    uint16_t dist = opt.distanceMillimeters;
+    uint16_t amp  = opt.amplitude;
+    uint16_t amb  = opt.ambient;
 
-    // Debuglogg (kan kommenteras bort senare)
     Serial.print("OPT ch ");
     Serial.print(ch);
     Serial.print(": dist = ");
     Serial.print(dist);
     Serial.print(" mm | amp = ");
-    Serial.println(amp);
+    Serial.print(amp);
+    Serial.print(" | amb = ");
+    Serial.println(amb);
 
-    if (dist > 3000 || dist == 0) continue;  // ogiltigt eller för långt
+    // Felskydd
+    if (amp < MIN_AMPLITUDE || dist > MAX_DISTANCE || dist == 0) {
+      Serial.println("⚠️ Ogiltig mätning – ignorerar");
+      continue;
+    }
 
-    if (ch == 0 && dist < CRIT_FRONT) {
+    // Riktning: ch 1 = FRONT, ch 2 = LEFT, ch 0 = RIGHT (verifierat från test)
+    if (ch == 1 && dist < CRIT_FRONT) {
       Serial.println("✅ OPT: FRONT kritisk");
-      return OPT_CRITICAL_FRONT;
+      lastCritical = OPT_CRITICAL_FRONT;
     }
-
-    if (ch == 2 && dist < CRIT_LEFT) {
+    if (ch == 2 && dist < CRIT_LEFT && lastCritical == OPT_CLEAR) {
       Serial.println("✅ OPT: VÄNSTER kritisk");
-      return OPT_CRITICAL_LEFT;
+      lastCritical = OPT_CRITICAL_LEFT;
     }
-
-    if (ch == 1 && dist < CRIT_RIGHT) {
+    if (ch == 0 && dist < CRIT_RIGHT && lastCritical == OPT_CLEAR) {
       Serial.println("✅ OPT: HÖGER kritisk");
-      return OPT_CRITICAL_RIGHT;
+      lastCritical = OPT_CRITICAL_RIGHT;
     }
   }
 
-  return OPT_CLEAR;
+  return lastCritical;
 }
