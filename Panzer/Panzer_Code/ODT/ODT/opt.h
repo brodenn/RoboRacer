@@ -1,7 +1,7 @@
 #ifndef OPT_H
 #define OPT_H
 
-#include <Arduino.h>
+#include <Wire.h>
 #include "OPT3101.h"
 
 enum OptStatus {
@@ -11,11 +11,13 @@ enum OptStatus {
   OPT_CRITICAL_RIGHT
 };
 
-void initOPT();
-OptStatus checkOptObstacles();
-
-// 👇 Lägg till detta för global åtkomst i .ino
+// Externa variabler
 extern OPT3101 opt;
-extern uint16_t optDistances[3];
+extern uint16_t optDistances[3];  // [0]=LEFT, [1]=FRONT, [2]=RIGHT
+
+// Funktioner
+void initOPT();
+void readOPTSensors();
+OptStatus checkOptObstacles();
 
 #endif

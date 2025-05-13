@@ -1,7 +1,7 @@
 #include "opt.h"
 
 OPT3101 opt;
-uint16_t optDistances[3] = {9999, 9999, 9999};  // vänster, front, höger
+uint16_t optDistances[3] = {9999, 9999, 9999};  // [0]=LEFT, [1]=FRONT, [2]=RIGHT
 
 void initOPT() {
   opt.setAddress(0x58);  // standard
@@ -12,7 +12,7 @@ void initOPT() {
     return;
   }
 
-  opt.setFrameTiming(512);  // stabil uppdatering
+  opt.setFrameTiming(128);  // snabbare uppdatering
   opt.setBrightness(OPT3101Brightness::Adaptive);
 
   Serial.println("✅ OPT3101 initierad");
@@ -30,12 +30,13 @@ OptStatus checkOptObstacles() {
 
   for (int ch = 0; ch < 3; ch++) {
     opt.setChannel(ch);
-    opt.sample();  // använder samma som i testkod
-    //optDistances[ch] = dist;
+    opt.sample();  // blockande mätning
 
     uint16_t dist = opt.distanceMillimeters;
     uint16_t amp  = opt.amplitude;
     uint16_t amb  = opt.ambient;
+
+    optDistances[ch] = dist;  // <-- Spara mätvärde till array
 
     Serial.print("OPT ch ");
     Serial.print(ch);
@@ -52,7 +53,7 @@ OptStatus checkOptObstacles() {
       continue;
     }
 
-    // Riktning: ch 1 = FRONT, ch 0 = LEFT, ch 2 = RIGHT (verifierat från test)
+    // Riktning
     if (ch == 1 && dist < CRIT_FRONT) {
       Serial.println("✅ OPT: FRONT kritisk");
       lastCritical = OPT_CRITICAL_FRONT;
@@ -69,3 +70,27 @@ OptStatus checkOptObstacles() {
 
   return lastCritical;
 }
+void readOPTSensors() {
+  for (int ch = 0; ch < 3; ch++) {
+    opt.setChannel(ch);
+    opt.sample();  // blockande mätning
+
+    uint16_t dist = opt.distanceMillimeters;
+    uint16_t amp  = opt.amplitude;
+
+    if (amp < 100 || dist == 0) {
+      Serial.print("⚠️ OPT ch "); Serial.print(ch);
+      Serial.println(": ogiltig mätning – ignoreras");
+      optDistances[ch] = 9999;  // indikera ogiltigt
+    } else {
+      optDistances[ch] = dist;
+    }
+
+    Serial.print("OPT ch ");
+    Serial.print(ch);
+    Serial.print(": dist = ");
+    Serial.print(optDistances[ch]);
+    Serial.println(" mm");
+  }
+}
+

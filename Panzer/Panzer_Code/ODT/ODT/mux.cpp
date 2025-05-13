@@ -14,8 +14,7 @@ void selectMuxChannel(uint8_t channel) {
 
 void initVL53Sensors() {
   selectMuxChannel(0);
-  vl53_left.VL53L4CD_Off();
-  vl53_left.VL53L4CD_On();
+  vl53_left.VL53L4CD_Off(); vl53_left.VL53L4CD_On();
   if (vl53_left.InitSensor() == 0) {
     vl53_left.VL53L4CD_SetRangeTiming(15, 0);
     vl53_left.VL53L4CD_StartRanging();
@@ -23,8 +22,7 @@ void initVL53Sensors() {
   }
 
   selectMuxChannel(3);
-  vl53_right.VL53L4CD_Off();
-  vl53_right.VL53L4CD_On();
+  vl53_right.VL53L4CD_Off(); vl53_right.VL53L4CD_On();
   if (vl53_right.InitSensor() == 0) {
     vl53_right.VL53L4CD_SetRangeTiming(15, 0);
     vl53_right.VL53L4CD_StartRanging();
@@ -33,8 +31,12 @@ void initVL53Sensors() {
 }
 
 MuxStatus checkVL53Obstacles() {
-  uint8_t ready = 0;
+  const uint16_t CRIT_LEFT  = 100;
+  const uint16_t CRIT_RIGHT = 100;
+  const uint16_t SIGNAL_MIN = 20;  // kcps
+
   VL53L4CD_Result_t result;
+  uint8_t ready = 0;
 
   // Vänster
   selectMuxChannel(0);
@@ -42,9 +44,20 @@ MuxStatus checkVL53Obstacles() {
   if (ready) {
     vl53_left.VL53L4CD_GetResult(&result);
     vl53_left.VL53L4CD_ClearInterrupt();
-    vl53Distances[0] = result.distance_mm;
-    Serial.print("📏 VL53 V: "); Serial.print(vl53Distances[0]); Serial.println(" mm");
-    if (vl53Distances[0] < VL53_CRIT_LEFT && vl53Distances[0] > 0) {
+
+    Serial.print("📏 VL53 V: ");
+    Serial.print(result.distance_mm);
+    Serial.print(" mm | Signal: ");
+    Serial.println(result.signal_per_spad_kcps);
+
+    if (result.signal_per_spad_kcps >= SIGNAL_MIN) {
+      vl53Distances[0] = result.distance_mm;
+    } else {
+      Serial.println("⚠️ VL53 vänster: signal < 20 → mätning ignoreras");
+      vl53Distances[0] = 0;
+    }
+
+    if (vl53Distances[0] > 0 && vl53Distances[0] < CRIT_LEFT) {
       return MUX_CRITICAL_LEFT;
     }
   }
@@ -56,9 +69,20 @@ MuxStatus checkVL53Obstacles() {
   if (ready) {
     vl53_right.VL53L4CD_GetResult(&result);
     vl53_right.VL53L4CD_ClearInterrupt();
-    vl53Distances[1] = result.distance_mm;
-    Serial.print("📏 VL53 H: "); Serial.print(vl53Distances[1]); Serial.println(" mm");
-    if (vl53Distances[1] < VL53_CRIT_RIGHT && vl53Distances[1] > 0) {
+
+    Serial.print("📏 VL53 H: ");
+    Serial.print(result.distance_mm);
+    Serial.print(" mm | Signal: ");
+    Serial.println(result.signal_per_spad_kcps);
+
+    if (result.signal_per_spad_kcps >= SIGNAL_MIN) {
+      vl53Distances[1] = result.distance_mm;
+    } else {
+      Serial.println("⚠️ VL53 höger: signal < 20 → mätning ignoreras");
+      vl53Distances[1] = 0;
+    }
+
+    if (vl53Distances[1] > 0 && vl53Distances[1] < CRIT_RIGHT) {
       return MUX_CRITICAL_RIGHT;
     }
   }
