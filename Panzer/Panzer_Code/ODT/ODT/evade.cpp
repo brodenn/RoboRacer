@@ -73,8 +73,14 @@ void performAvoidance(uint16_t vlL, uint16_t vlR, uint16_t optL, uint16_t optR, 
   }
 
   // === Raksträcka
-  bool straightPath = (vlL > 200 && vlR > 200 && optL > 400 && optR > 400);
-  int baseSpeed = straightPath ? 255 : BASE_SPEED;
+bool straightPath = (
+  vlL > BOOST_THRESH_VL &&
+  vlR > BOOST_THRESH_VL &&
+  optL > BOOST_THRESH_OPT &&
+  optR > BOOST_THRESH_OPT
+);
+
+int baseSpeed = straightPath ? BOOST_SPEED : BASE_SPEED;
 
   if (straightPath) {
     Serial.println("🛣️ Raksträcka upptäckt → högre hastighet");
@@ -85,7 +91,7 @@ void performAvoidance(uint16_t vlL, uint16_t vlR, uint16_t optL, uint16_t optR, 
   if (optL > 300 && optR > 300) {
     int16_t diff = (int16_t)optR - (int16_t)optL;
     if (abs(diff) > 100) {
-      steerBias = constrain(diff / 800.0, -0.1, 0.1);  // max ±0.3 bias
+      steerBias = constrain(diff / 800.0, -0.2, 0.2);  // max ±0.3 bias
       Serial.print("🧭 Förhandsstyrning (steerBias): ");
       Serial.println(steerBias, 2);
     }
@@ -94,13 +100,13 @@ void performAvoidance(uint16_t vlL, uint16_t vlR, uint16_t optL, uint16_t optR, 
   // === Reaktiv styrning vid hinder
   float steerStrength = 0;
 
-  if (optL < 1000 && vlL > 0 && vlL < 200) {
-    Serial.println("⚠️ Nära hinder på vänster sida (OPT+VL) → styr höger");
-    steerStrength = -0.6;
-  } else if (optR < 1000 && vlR > 0 && vlR < 200) {
-    Serial.println("⚠️ Nära hinder på höger sida (OPT+VL) → styr vänster");
-    steerStrength = 0.6;
-  } else {
+if (optL < OBSTACLE_CLOSE_OPT && vlL > 0 && vlL < OBSTACLE_CLOSE_VL) {
+  Serial.println("⚠️ Nära hinder på vänster sida (OPT+VL) → styr höger");
+  steerStrength = -0.5;
+} else if (optR < OBSTACLE_CLOSE_OPT && vlR > 0 && vlR < OBSTACLE_CLOSE_VL) {
+  Serial.println("⚠️ Nära hinder på höger sida (OPT+VL) → styr vänster");
+  steerStrength = 0.5;
+} else {
     float optWeightL = calcWeight(optL);
     float optWeightR = calcWeight(optR);
     steerStrength = optWeightR - optWeightL + steerBias;

@@ -6,8 +6,8 @@
 #define MUX_ADDR 0x70  // I2C-adress för multiplexer
 
 // === Tröskelvärden för kritiskt avstånd (mm) ===
-#define VL53_CRIT_LEFT  100
-#define VL53_CRIT_RIGHT 100
+#define VL53_CRIT_LEFT  120
+#define VL53_CRIT_RIGHT 120
 
 // === Returnstatus för hinderkontroll ===
 enum MuxStatus {
