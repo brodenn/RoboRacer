@@ -20,11 +20,11 @@ void initOPT() {
 
 OptStatus checkOptObstacles() {
   const uint16_t CRIT_FRONT  = 300;
-  const uint16_t CRIT_LEFT   = 400;
-  const uint16_t CRIT_RIGHT  = 400;
+  const uint16_t CRIT_LEFT   = 450;
+  const uint16_t CRIT_RIGHT  = 450;
 
-  const uint16_t MIN_AMPLITUDE = 50;
-  const uint16_t MAX_DISTANCE  = 4000;
+  const uint16_t MIN_AMPLITUDE = 40;
+  const uint16_t MAX_DISTANCE  = 1000;
 
   OptStatus lastCritical = OPT_CLEAR;
 

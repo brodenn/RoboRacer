@@ -58,7 +58,14 @@ void performAvoidance(uint16_t vlL, uint16_t vlR, uint16_t optL, uint16_t optR, 
     Serial.println("🚨 Hinder fram (<200 mm) → backa och välj friaste riktning");
 
     // Backa först
-    backUp(120, 120, 700);
+    delay(50);
+if (optL < optR) {
+  // Hinder vänster – backa åt höger
+  backUp(80, 50, BACKUP_DURATION);
+} else {
+  // Hinder höger eller lika – backa åt vänster
+  backUp(50, 80, BACKUP_DURATION);
+}
     delay(150);
 
     // Välj riktning baserat på vilket håll som är friare
@@ -88,7 +95,7 @@ int baseSpeed = straightPath ? BOOST_SPEED : BASE_SPEED;
 
   // === Förhandsstyrning (steerBias) vid öppen yta
   float steerBias = 0.0;
-  if (optL > 300 && optR > 300) {
+  if (optL > 350 && optR > 350) {
     int16_t diff = (int16_t)optR - (int16_t)optL;
     if (abs(diff) > 100) {
       steerBias = constrain(diff / 800.0, -0.2, 0.2);  // max ±0.3 bias
@@ -100,17 +107,19 @@ int baseSpeed = straightPath ? BOOST_SPEED : BASE_SPEED;
   // === Reaktiv styrning vid hinder
   float steerStrength = 0;
 
-if (optL < OBSTACLE_CLOSE_OPT && vlL > 0 && vlL < OBSTACLE_CLOSE_VL) {
-  Serial.println("⚠️ Nära hinder på vänster sida (OPT+VL) → styr höger");
-  steerStrength = -0.5;
-} else if (optR < OBSTACLE_CLOSE_OPT && vlR > 0 && vlR < OBSTACLE_CLOSE_VL) {
-  Serial.println("⚠️ Nära hinder på höger sida (OPT+VL) → styr vänster");
-  steerStrength = 0.5;
+if ((optL < OBSTACLE_CLOSE_OPT && vlL > 0 && vlL < OBSTACLE_CLOSE_VL) &&
+    (optL + 100 < optR)) {
+  Serial.println("⚠️ Tydligt närmare vänster sida → styr höger");
+  steerStrength = -0.6;
+} else if ((optR < OBSTACLE_CLOSE_OPT && vlR > 0 && vlR < OBSTACLE_CLOSE_VL) &&
+           (optR + 100 < optL)) {
+  Serial.println("⚠️ Tydligt närmare höger sida → styr vänster");
+  steerStrength = 0.6;
 } else {
-    float optWeightL = calcWeight(optL);
-    float optWeightR = calcWeight(optR);
-    steerStrength = optWeightR - optWeightL + steerBias;
-  }
+  float optWeightL = calcWeight(optL);
+  float optWeightR = calcWeight(optR);
+  steerStrength = optWeightR - optWeightL + steerBias;
+}
 
   // === Beräkna PWM med styrkompensation
   steerStrength = constrain(steerStrength, -0.6, 0.6);

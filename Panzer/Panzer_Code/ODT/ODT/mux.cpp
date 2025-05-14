@@ -33,7 +33,7 @@ void initVL53Sensors() {
 MuxStatus checkVL53Obstacles() {
   const uint16_t CRIT_LEFT  = VL53_CRIT_LEFT;
   const uint16_t CRIT_RIGHT = VL53_CRIT_RIGHT;
-  const uint16_t SIGNAL_MIN = 20;  // kcps
+  const uint16_t SIGNAL_MIN = 15;  // kcps
 
   VL53L4CD_Result_t result;
   uint8_t ready = 0;
