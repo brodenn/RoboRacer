@@ -1,61 +1,67 @@
+#include <Arduino.h>
 #include <Wire.h>
 #include <Adafruit_MotorShield.h>
+
 #include "mux.h"
 #include "opt.h"
-#include "evade.h"
 #include "tft.h"
+#include "evade.h"
+#include "steering.h"
 
-#define PIN_START 13
-
-
-// === Globala motorpekare ===
-Adafruit_DCMotor *motorLeft = nullptr;
-Adafruit_DCMotor *motorRight = nullptr;
-
-// === Tidshantering ===
-unsigned long avoidUntil = 0;
-
-// === MotorShield-instans ===
+// === Globala motorobjekt ===
 Adafruit_MotorShield AFMS = Adafruit_MotorShield(0x60);
+Adafruit_DCMotor* motorLeft;
+Adafruit_DCMotor* motorRight;
+
+unsigned long avoidUntil = 0;
 
 void setup() {
   Serial.begin(115200);
-  Wire.begin();
-  Wire.setClock(400000);
-  pinMode(PIN_START, INPUT_PULLUP);
+  delay(1000);
 
- // pinMode(KILL_SWITCH_PIN, INPUT);
+  // Initiera I2C
+  Wire.begin(5, 6);  // SDA, SCL
 
-  AFMS.begin();
-  motorLeft = AFMS.getMotor(3);
-  motorRight = AFMS.getMotor(4);
+  // Init motorer
+  if (!AFMS.begin()) {
+    Serial.println("❌ Kunde inte starta Motor FeatherWing!");
+    while (1);
+  }
+  Serial.println("✅ Motor FeatherWing OK");
 
+  motorLeft  = AFMS.getMotor(3);  // M3
+  motorRight = AFMS.getMotor(4);  // M4
+
+  // Initiera sensorer
   initOPT();
   initVL53Sensors();
-  initTFT();
 
-  Serial.println("🚗 Panzer redo");
+  // Initiera display
+  initTFT();
 }
 
 void loop() {
+  // === Läs sensorer ===
+  readOPTSensors();            // OPT: [0]=LEFT, [1]=FRONT, [2]=RIGHT
+  checkVL53Obstacles();        // VL53: [0]=LEFT, [1]=RIGHT
 
-  while (digitalRead(PIN_START) == LOW) {
-  int val = digitalRead(PIN_START);
-  Serial.println(val == LOW ? "⬇️ Tryckt" : "⬆️ Släppt");
-  delay(300);
-}
+  // === Uppdatera display ===
+  updateTFT();
 
-  if (millis() < avoidUntil) return;
+  // === Välj logik ===
+  bool frontBlocked = optDistances[1] < 300;
+  bool sideBlockedL = vl53Distances[0] > 0 && vl53Distances[0] < 100;
+  bool sideBlockedR = vl53Distances[1] > 0 && vl53Distances[1] < 100;
 
-  readOPTSensors();                      // Uppdaterar optDistances[]
-  MuxStatus muxStatus = checkVL53Obstacles();  // Uppdaterar vl53Distances[]
+  if (frontBlocked || sideBlockedL || sideBlockedR) {
+    performAvoidance(
+      vl53Distances[0], vl53Distances[1],
+      optDistances[0], optDistances[2],
+      optDistances[1]
+    );
+  } else {
+    correctCourse();  // Ny flytande kurskorrigering
+  }
 
-  // Kör hinderlogik
-  performAvoidance(
-    vl53Distances[0],                   // VL vänster
-    vl53Distances[1],                   // VL höger
-    optDistances[0],                    // OPT vänster
-    optDistances[2],                    // OPT höger
-    optDistances[1]                     // OPT front
-  );
+  delay(100);  // Stabilisera loopfrekvens (~10 Hz)
 }
