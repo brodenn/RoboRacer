@@ -5,7 +5,7 @@
 #include "evade.h"
 #include "tft.h"
 
-#define PIN_START 14
+#define PIN_START 13
 
 
 // === Globala motorpekare ===

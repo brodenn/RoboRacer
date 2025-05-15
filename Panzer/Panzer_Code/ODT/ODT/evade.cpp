@@ -58,15 +58,15 @@ void performAvoidance(uint16_t vlL, uint16_t vlR, uint16_t optL, uint16_t optR, 
     Serial.println("🚨 Hinder fram (<200 mm) → backa och välj friaste riktning");
 
     // Backa först
-    delay(50);
+    delay(100);
 if (optL < optR) {
   // Hinder vänster – backa åt höger
-  backUp(80, 50, BACKUP_DURATION);
+  backUp(100, 50, BACKUP_DURATION);
 } else {
   // Hinder höger eller lika – backa åt vänster
-  backUp(50, 80, BACKUP_DURATION);
+  backUp(50, 100, BACKUP_DURATION);
 }
-    delay(150);
+    delay(100);
 
     // Välj riktning baserat på vilket håll som är friare
     if (optL > optR) {
@@ -97,10 +97,11 @@ int baseSpeed = straightPath ? BOOST_SPEED : BASE_SPEED;
   float steerBias = 0.0;
   if (optL > 350 && optR > 350) {
     int16_t diff = (int16_t)optR - (int16_t)optL;
-    if (abs(diff) > 100) {
-      steerBias = constrain(diff / 800.0, -0.2, 0.2);  // max ±0.3 bias
+    if (abs(diff) > 50) {
+      steerBias = constrain(diff / 500.0, -0.25, 0.25);  // max ±0.3 bias
       Serial.print("🧭 Förhandsstyrning (steerBias): ");
       Serial.println(steerBias, 2);
+      
     }
   }
 
@@ -124,6 +125,10 @@ if ((optL < OBSTACLE_CLOSE_OPT && vlL > 0 && vlL < OBSTACLE_CLOSE_VL) &&
   // === Beräkna PWM med styrkompensation
   steerStrength = constrain(steerStrength, -0.6, 0.6);
   int16_t steer = steerStrength * MAX_CORRECTION;
+  
+  if (abs(steerStrength) > 0.5) {
+    baseSpeed -= 30;  // sänk hastigheten vid skarp sväng
+  }
 
   int pwmL = constrain(baseSpeed - steer, 0, 255);
   int pwmR = constrain(baseSpeed + steer, 0, 255);

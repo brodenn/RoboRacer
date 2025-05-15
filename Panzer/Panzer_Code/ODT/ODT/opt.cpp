@@ -13,7 +13,7 @@ void initOPT() {
   }
 
   opt.setFrameTiming(128);  // snabbare uppdatering
-  opt.setBrightness(OPT3101Brightness::Adaptive);
+  opt.setBrightness(OPT3101Brightness::High);
 
   Serial.println("✅ OPT3101 initierad");
 }
