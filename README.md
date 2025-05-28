@@ -69,3 +69,4 @@ The `omnix_py` directory contains Python scripts that complement the robot's fir
   - `socket`
   - `json`
   - `csv`
+[📄 Download the full report: Report ghost divsion.pdf](./Report%20ghost%20divsion.pdf)
