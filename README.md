@@ -1,5 +1,7 @@
 # RoboRacer
 
+## 📄 [Download the full report: Report ghost divsion.pdf](./Report%20ghost%20divsion.pdf)
+
 # Omnix
 
 The `omnix` robot is one of the vehicles in the RoboRacer project, equipped with omni wheels for enhanced maneuverability. It serves as a core component of the project, handling various functionalities such as sensor management, motor control, AI steering, and communication.
@@ -69,4 +71,3 @@ The `omnix_py` directory contains Python scripts that complement the robot's fir
   - `socket`
   - `json`
   - `csv`
-[📄 Download the full report: Report ghost divsion.pdf](./Report%20ghost%20divsion.pdf)
