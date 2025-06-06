@@ -2,48 +2,73 @@
 
 ## 📄 [Download the full report: Report ghost divsion.pdf](./Report%20ghost%20divsion.pdf)
 
-# Omnix
+Welcome to the RoboRacer project! This repository contains the full stack for the Omnix robot platform, including embedded firmware, Python-based visualization and configuration tools, and supporting documentation.
 
-The `omnix` robot is one of the vehicles in the RoboRacer project, equipped with omni wheels for enhanced maneuverability. It serves as a core component of the project, handling various functionalities such as sensor management, motor control, AI steering, and communication.
+---
+
+## Project Images
+
+### Robots
+![Robots](./pics/robots.png)
+
+### Visualizer Example
+![Visualizer](./pics/visualizer.png)
+
+### Configuration GUI
+![GUI](./pics/gui.png)
+
+---
+
+# Omnix Overview
+
+The `omnix` robot is a core vehicle in the RoboRacer project, equipped with omni wheels for enhanced maneuverability. It handles sensor management, motor control, AI steering, and wireless communication, and is supported by a Python toolkit for visualization and configuration.
+
+---
 
 ## Directory Structure
 
-- **`ai.cpp` / `ai.h`**: Implements AI steering logic for autonomous navigation.
-- **`controller.cpp` / `controller.h`**: Manages gamepad/controller input.
-- **`globals.cpp` / `globals.h`**: Contains global variables and constants used across the module.
-- **`imu.cpp` / `imu.h`**: Handles IMU (Inertial Measurement Unit) initialization and data reading.
-- **`interrupts.cpp` / `interrupts.h`**: Configures and manages sensor interrupts.
-- **`motors.cpp` / `motors.h`**: Controls motor initialization and updates.
-- **`mux.cpp` / `mux.h`**: Manages the I2C multiplexer for sensor communication.
-- **`params.cpp` / `params.h`**: Defines and manages parameters for steering and sensor thresholds.
-- **`sensors.cpp` / `sensors.h`**: Handles sensor initialization, reading, and management.
-- **`tasks.cpp` / `tasks.h`**: Defines FreeRTOS tasks for handling sensors, motors, and auxiliary logic.
-- **`udp_handler.cpp` / `udp_comm.h`**: Handles UDP communication for parameter updates and telemetry.
-- **`udp_sender.cpp`**: Sends telemetry data over UDP.
-- **`wifi_setup.cpp` / `wifi_setup.h`**: Configures WiFi and UDP communication.
-- **`xshut.cpp` / `xshut.h`**: Manages sensor power control via GPIO.
-- **`omnix_py/`**: Contains Python scripts for visualization, configuration, and debugging.
+- **`ai.cpp` / `ai.h`**: AI steering logic for autonomous navigation.
+- **`controller.cpp` / `controller.h`**: Gamepad/controller input management.
+- **`globals.cpp` / `globals.h`**: Global variables and constants.
+- **`imu.cpp` / `imu.h`**: IMU (Inertial Measurement Unit) initialization and data reading.
+- **`interrupts.cpp` / `interrupts.h`**: Sensor interrupt configuration and management.
+- **`motors.cpp` / `motors.h`**: Motor initialization and control.
+- **`mux.cpp` / `mux.h`**: I2C multiplexer for sensor communication.
+- **`params.cpp` / `params.h`**: Steering and sensor parameter management.
+- **`sensors.cpp` / `sensors.h`**: Sensor initialization, reading, and management.
+- **`tasks.cpp` / `tasks.h`**: FreeRTOS tasks for sensors, motors, and logic.
+- **`udp_handler.cpp` / `udp_comm.h`**: UDP communication for parameters and telemetry.
+- **`udp_sender.cpp`**: Telemetry data transmission over UDP.
+- **`wifi_setup.cpp` / `wifi_setup.h`**: WiFi and UDP setup.
+- **`xshut.cpp` / `xshut.h`**: Sensor power control via GPIO.
+- **`omnix_py/`**: Python scripts for visualization, configuration, and debugging.
 
-## Python Code Overview
+---
 
-The `omnix_py` directory contains Python scripts that complement the robot's firmware by providing tools for visualization, configuration, and debugging:
+## Python Toolkit Overview
 
-- **`main.py`**: Entry point for running the Python tools, including the UI and visualizer.
-- **`udp_comm.py`**: Handles UDP communication for receiving telemetry and sending commands to the robot.
-- **`ui.py`**: Implements a Tkinter-based graphical interface for configuring parameters, monitoring the robot's state, and sending commands.
-- **`visualizer.py`**: Provides a Pygame-based visualization of sensor data, IMU readings, and telemetry.
-- **`config.py`**: Stores shared configuration values, such as UDP ports, IP addresses, and default parameters.
-- **`logger.py`**: Handles logging of telemetry and sensor data to CSV files for analysis.
+The `omnix_py` directory provides Python scripts that complement the robot's firmware:
+
+- **`main.py`**: Entry point for the Python tools (UI and visualizer).
+- **`udp_comm.py`**: UDP communication for telemetry and commands.
+- **`ui.py`**: Tkinter-based GUI for parameter tuning and monitoring.
+- **`visualizer.py`**: Pygame-based visualization of sensor and IMU data.
+- **`config.py`**: Shared configuration (ports, IPs, parameters).
+- **`logger.py`**: Telemetry and sensor data logging to CSV.
+
+---
 
 ## Key Features
 
-- **Omni Wheels**: Enables smooth and precise movement in any direction.
-- **Sensor Management**: Supports multiple VL53L4CD sensors via I2C multiplexers.
-- **Motor Control**: Smooth motor updates and autonomous driving logic.
-- **AI Steering**: Implements algorithms for wall centering, curve anticipation, and obstacle avoidance.
-- **Communication**: Real-time telemetry and parameter updates via UDP.
-- **IMU Integration**: Reads acceleration, gyroscope, and temperature data.
-- **Python Tools**: Includes a UI for parameter tuning and a visualizer for real-time telemetry.
+- **Omni Wheels**: Smooth, precise movement in any direction.
+- **Sensor Management**: Multiple VL53L4CD sensors via I2C multiplexers.
+- **Motor Control**: Smooth updates and autonomous driving logic.
+- **AI Steering**: Wall centering, curve anticipation, and obstacle avoidance.
+- **Wireless Communication**: Real-time telemetry and parameter updates via UDP.
+- **IMU Integration**: Acceleration, gyroscope, and temperature data.
+- **Python Tools**: UI for parameter tuning and real-time telemetry visualization.
+
+---
 
 ## Setup Instructions
 
@@ -52,11 +77,15 @@ The `omnix_py` directory contains Python scripts that complement the robot's fir
 3. Start FreeRTOS tasks for sensor reading, motor control, and auxiliary logic.
 4. Run the Python tools using `python3 main.py` in the `omnix_py` directory.
 
+---
+
 ## Usage
 
-- **Autonomous Mode**: The AI steering logic takes control of the motors based on sensor data.
-- **Controller Mode**: A gamepad can be used to manually control the motors.
-- **Python Tools**: Use the UI for parameter tuning and the visualizer for monitoring telemetry.
+- **Autonomous Mode**: AI steering logic controls the motors based on sensor data.
+- **Controller Mode**: Use a gamepad for manual control.
+- **Python Tools**: Tune parameters and monitor telemetry in real time.
+
+---
 
 ## Dependencies
 
