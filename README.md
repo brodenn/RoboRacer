@@ -11,12 +11,6 @@ Welcome to the RoboRacer project! This repository contains the full stack for th
 ### Robots
 ![Robots](./pics/robots.png)
 
-### Visualizer Example
-![Visualizer](./pics/visualizer.png)
-
-### Configuration GUI
-![GUI](./pics/gui.png)
-
 ---
 
 # Omnix Overview
@@ -100,3 +94,15 @@ The `omnix_py` directory provides Python scripts that complement the robot's fir
   - `socket`
   - `json`
   - `csv`
+
+---
+
+## Visualizer Example
+
+![Visualizer](./pics/visualizer.png)
+
+---
+
+## Configuration GUI
+
+![GUI](./pics/gui.png)
