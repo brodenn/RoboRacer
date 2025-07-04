@@ -1,6 +1,7 @@
 #include <Wire.h>               // I2C-kommunikation
 #include "mux.h"                // Egna definitioner och typer (t.ex. MUX_ADDR)
 #include "vl53l4cd_class.h"     // Bibliotek för VL53L4CD-sensorer
+#include "evade.h"
 
 // Två sensorer anslutna via multiplexer – kanal 0 (vänster) och kanal 3 (höger)
 VL53L4CD vl53_left(&Wire, -1);   // Vänster sensor
@@ -42,7 +43,7 @@ MuxStatus checkVL53Obstacles() {
   // === Tröskelvärden för avstånd och signalstyrka ===
   const uint16_t CRIT_LEFT  = VL53_CRIT_LEFT;    // t.ex. 100 mm
   const uint16_t CRIT_RIGHT = VL53_CRIT_RIGHT;   // t.ex. 100 mm
-  const uint16_t SIGNAL_MIN = 15;                // Minsta godkända signalstyrka (kcps)
+  const uint16_t SIGNAL_MIN = 2;                // Minsta godkända signalstyrka (kcps)
 
   VL53L4CD_Result_t result;  // Struktur för mätresultat
   uint8_t ready = 0;         // Flagga för datatillgänglighet
@@ -64,8 +65,10 @@ MuxStatus checkVL53Obstacles() {
     if (result.signal_per_spad_kcps >= SIGNAL_MIN) {
       vl53Distances[0] = result.distance_mm;
     } else {
-      Serial.println("⚠️ VL53 vänster: signal < 20 → mätning ignoreras");
-      vl53Distances[0] = 0;  // Ignorera ogiltig mätning
+      Serial.println("⚠️ VL53 vänster: signal ");
+      Serial.println(SIGNAL_MIN);
+      Serial.println(" → mätning ignoreras");
+      vl53Distances[0] = INVALID_DISTANCE;  // Ignorera ogiltig mätning
     }
 
     // Kontrollera om avståndet är kritiskt
@@ -90,8 +93,10 @@ MuxStatus checkVL53Obstacles() {
     if (result.signal_per_spad_kcps >= SIGNAL_MIN) {
       vl53Distances[1] = result.distance_mm;
     } else {
-      Serial.println("⚠️ VL53 höger: signal < 20 → mätning ignoreras");
-      vl53Distances[1] = 0;
+      Serial.println("⚠️ VL53 höger: signal < ");
+      Serial.println(SIGNAL_MIN);
+      Serial.println(" → mätning ignoreras");
+      vl53Distances[1] = INVALID_DISTANCE;
     }
 
     if (vl53Distances[1] > 0 && vl53Distances[1] < CRIT_RIGHT) {

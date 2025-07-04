@@ -1,6 +1,12 @@
- #include "tft.h"
+#include "tft.h"
 #include "mux.h"
 #include "opt.h"
+
+// Dessa ska finnas som globala i main eller evade.cpp
+extern int currentPWM_L;
+extern int currentPWM_R;
+extern bool dirLeftForward;
+extern bool dirRightForward;
 
 Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST);
 
@@ -23,7 +29,7 @@ void initTFT() {
 
   tft.setTextColor(ST77XX_WHITE);
   tft.setCursor(90, 20); tft.print("mm:");
-  tft.setCursor(90, 60); tft.print("Amp:");
+  tft.setCursor(90, 60); tft.print("PWM %:");
 
   drawFOVSketch();
 }
@@ -52,15 +58,18 @@ void drawSensorData(uint16_t leftVL53, uint16_t frontOPT, uint16_t rightVL53,
   tft.fillRect(20, 120, 60, 20, ST77XX_BLACK);
   tft.fillRect(190, 120, 60, 20, ST77XX_BLACK);
 
-  // mm
+  // mm (distans från sensorer)
   tft.setCursor(20, 40);  tft.setTextColor(ST77XX_RED);   tft.print(leftF_OPT);
   tft.setCursor(100, 40); tft.setTextColor(ST77XX_GREEN); tft.print(frontOPT);
   tft.setCursor(190, 40); tft.setTextColor(ST77XX_BLUE);  tft.print(rightF_OPT);
 
-  // amplitud
-  //tft.setCursor(20, 80);  tft.setTextColor(ST77XX_RED);   tft.print(optAmplitudes[0]);
-  //tft.setCursor(100, 80); tft.setTextColor(ST77XX_GREEN); tft.print(optAmplitudes[1]);
-  //tft.setCursor(190, 80); tft.setTextColor(ST77XX_BLUE);  tft.print(optAmplitudes[2]);
+  // PWM i procent
+  int pwmL_pct = map(currentPWM_L, 0, 255, 0, 100);
+  int pwmR_pct = map(currentPWM_R, 0, 255, 0, 100);
+  if (!dirLeftForward) pwmL_pct *= -1;
+  if (!dirRightForward) pwmR_pct *= -1;
+  tft.setCursor(20, 80);  tft.setTextColor(ST77XX_RED);   tft.printf("%d%%", pwmL_pct);
+  tft.setCursor(190, 80); tft.setTextColor(ST77XX_BLUE);  tft.printf("%d%%", pwmR_pct);
 
   // VL53-värden
   tft.setCursor(20, 120);  tft.setTextColor(ST77XX_WHITE); tft.print(leftVL53);
@@ -73,7 +82,7 @@ void updateTFT() {
     optDistances[1],           // OPT Front
     vl53Distances[1],          // VL53 Right
     optDistances[0],           // OPT Left
-    optDistances[1],           // OPT Front again (distance)
+    optDistances[1],           // OPT Front again
     optDistances[2]            // OPT Right
   );
 }

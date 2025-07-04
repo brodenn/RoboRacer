@@ -12,6 +12,10 @@
 
 extern Adafruit_ST7789 tft;
 
+// Globala PWM-värden i procent (anges som 0–255 i main/evade.cpp)
+extern int currentPWM_L;
+extern int currentPWM_R;
+
 // Initierar skärmen och ritar FOV-etiketter
 void initTFT();
 

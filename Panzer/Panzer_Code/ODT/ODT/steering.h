@@ -1,10 +1,10 @@
-// steering.h
 #ifndef STEERING_H
 #define STEERING_H
 
-#include <Arduino.h>
+#include <stdint.h>
 
-// Korrektionsfunktion som justerar motorhastigheter baserat på VL53-avstånd
 void correctCourse();
+float getManualSteeringBias();
+void setManualSteeringBias(float bias);  // <- ny
 
 #endif

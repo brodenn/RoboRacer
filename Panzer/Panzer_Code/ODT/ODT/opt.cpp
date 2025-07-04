@@ -15,7 +15,7 @@ void initOPT() {
     return;
   }
 
-  opt.setFrameTiming(128);  // Sätter högre mätfrekvens
+  opt.setFrameTiming(64);  // Sätter högre mätfrekvens
   opt.setBrightness(OPT3101Brightness::High);  // Max ljusstyrka (för bättre räckvidd)
 
   Serial.println("✅ OPT3101 initierad");
@@ -93,13 +93,13 @@ void readOPTSensors() {
     uint16_t amp  = opt.amplitude;
 
     // Ogiltig mätning: för låg amplitud eller nollvärde
-    if (amp < 100 || dist == 0) {
-      Serial.print("⚠️ OPT ch "); Serial.print(ch);
-      Serial.println(": ogiltig mätning – ignoreras");
-      optDistances[ch] = 9999;  // Markera som ogiltig
-    } else {
-      optDistances[ch] = dist;  // Spara giltigt värde
-    }
+if (amp < 100 || dist == 0 || dist == 9999) {
+  Serial.print("⚠️ OPT ch "); Serial.print(ch);
+  Serial.println(": ogiltig mätning → antas mycket nära");
+  optDistances[ch] = 50;  // Simulera "extremt nära" hinder
+} else {
+  optDistances[ch] = dist;  // Spara giltigt värde
+}
 
     // Skriv ut resultat för aktuell kanal
     Serial.print("OPT ch ");

@@ -8,6 +8,8 @@
 #include "evade.h"                       // Hinderundvikningslogik
 #include "steering.h"                    // Kurskorrigering
 
+#define PIN_START 13
+
 // === Globala motorobjekt ===
 Adafruit_MotorShield AFMS = Adafruit_MotorShield(0x60);  // Motor FeatherWing på I2C-adress 0x60
 Adafruit_DCMotor* motorLeft;                             // Vänster motor (M3)
@@ -42,6 +44,12 @@ void setup() {
 }
 
 void loop() {
+
+    while (digitalRead(PIN_START) == LOW) {
+  int val = digitalRead(PIN_START);
+  Serial.println(val == LOW ? "⬇️ Tryckt" : "⬆️ Släppt");
+  delay(300);
+}
   // === Läs sensordata ===
   readOPTSensors();            // Läs in avstånd från OPT3101: [0]=LEFT, [1]=FRONT, [2]=RIGHT
   checkVL53Obstacles();        // Läs in avstånd från VL53 via multiplexer: [0]=LEFT, [1]=RIGHT
@@ -67,5 +75,5 @@ void loop() {
     correctCourse();                        // Kurskorrigering när fri väg framåt
   }
 
-  delay(100);  // Stabiliserar loopfrekvens (~10 Hz)
+  delay(10);  // Stabiliserar loopfrekvens (~10 Hz)
 }

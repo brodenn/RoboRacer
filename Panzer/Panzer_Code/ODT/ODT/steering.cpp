@@ -3,10 +3,21 @@
 #include "opt.h"           // Innehåller optDistances[]
 #include "mux.h"           // Innehåller vl53Distances[]
 
+// Global manuell bias som används i styrlogik (kan justeras via WebSocket)
+static float manualSteeringBias = 0.0;
+
+float getManualSteeringBias() {
+  return manualSteeringBias;
+}
+
+void setManualSteeringBias(float bias) {
+  manualSteeringBias = constrain(bias, -0.5, 0.5);  // Begränsa trimvärdet
+}
+
 // === Funktion för att vikta VL53-avstånd (liknande opt-viktning) ===
 // Returnerar ett viktat värde mellan 0.0 (noll) och 1.0 (närmast)
 float calcVLWeight(uint16_t dist, uint16_t maxRange) {
-  if (dist == 0 || dist > maxRange) return 0.0;        // Ogiltigt eller utanför räckvidd
+  if (dist == 0 || dist > maxRange || dist == INVALID_DISTANCE) return 0.0;        // Ogiltigt eller utanför räckvidd
   return 1.0 - ((float)dist / maxRange);               // Närmare → högre vikt
 }
 

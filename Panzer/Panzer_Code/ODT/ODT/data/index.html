@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Panzer Kontroll</title>
+  <style>
+    body { background: #121212; color: #fff; font-family: sans-serif; text-align: center; }
+    canvas { background: #000; margin: 1em auto; border: 1px solid #555; display: block; }
+    input[type=range] { width: 60%; }
+    button { padding: 1em; margin: 0.3em; border-radius: 10px; background: #333; color: #fff; border: none; }
+    #log { width: 90%; height: 200px; background: #1e1e1e; overflow-y: scroll; border: 1px solid #444; margin: auto; padding: 1em; text-align: left; }
+  </style>
+</head>
+<body>
+  <h1>🛡️ Panzer Kontroll</h1>
+
+  <h3>Vänster PWM: <span id="pwmLeftVal">50</span>%</h3>
+  <input type="range" min="0" max="100" value="50" id="pwmLeft" oninput="throttledPWM('left')">
+  <h3>Höger PWM: <span id="pwmRightVal">50</span>%</h3>
+  <input type="range" min="0" max="100" value="50" id="pwmRight" oninput="throttledPWM('right')">
+
+  <h3>Steering Bias: <span id="biasVal">0</span></h3>
+  <input type="range" min="-100" max="100" value="0" id="bias" oninput="updateBias()">
+
+  <h3>Körtid (ms): <span id="durationVal">1000</span></h3>
+  <input type="range" min="100" max="5000" value="1000" step="100" id="duration" oninput="updateDuration()">
+
+  <canvas id="sensorCanvas" width="600" height="300"></canvas>
+
+  <div>
+    <button onclick="sendTimedCommand('move:left')">⬅️</button>
+    <button onclick="sendTimedCommand('move:forward')">⬆️</button>
+    <button onclick="sendTimedCommand('move:right')">➡️</button><br>
+    <button onclick="sendTimedCommand('move:backward')">⬇️</button>
+    <button onclick="sendCommand('move:stop')">⏹️</button>
+    <button onclick="sendCommand('cmd:reset')">🔄 RESET</button>
+  </div>
+
+  <h3>Logg:</h3>
+  <div id="log"></div>
+
+<script>
+let ws;
+const canvas = document.getElementById('sensorCanvas');
+const ctx = canvas.getContext('2d');
+const pwmTimeout = {};
+let driveDuration = 1000;
+let steeringBias = 0;
+
+function connectWebSocket() {
+  ws = new WebSocket(`ws://${location.hostname}/ws`);
+  ws.onopen = () => appendLog("✅ WebSocket ansluten");
+  ws.onclose = () => { appendLog("❌ WebSocket frånkopplad"); setTimeout(connectWebSocket, 2000); };
+  ws.onmessage = e => {
+    appendLog("📩 " + e.data);
+    if (e.data.startsWith("sensor:")) drawSensorData(e.data);
+  };
+}
+
+function drawSensorData(data) {
+  const parts = data.replace("sensor:", "").split(",").map(Number);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const h = canvas.height;
+  const maxDist = 1000;
+  const minDist = 100;
+  const maxVisualSize = 200;
+
+  const invScale = d => {
+    const clamped = Math.max(minDist, Math.min(d, maxDist));
+    return ((maxDist - clamped) / (maxDist - minDist)) * maxVisualSize;
+  };
+
+  const dangerColor = d => {
+    const t = Math.max(0, Math.min(1, (maxDist - d) / maxDist));
+    const r = Math.floor(255 * t);
+    const g = Math.floor(255 * (1 - t));
+    return `rgb(${r},${g},0)`;
+  };
+
+  ctx.fillStyle = dangerColor(parts[0]);
+  ctx.fillRect(30, h - invScale(parts[0]), 30, invScale(parts[0]));
+  ctx.fillStyle = dangerColor(parts[4]);
+  ctx.fillRect(100, h - invScale(parts[4]), 30, invScale(parts[4]));
+
+  const baseX = 300;
+  const baseY = h - 20;
+  drawCone(baseX, baseY, invScale(parts[1]), -140, dangerColor(parts[1]));
+  drawCone(baseX, baseY, invScale(parts[2]), -90,  dangerColor(parts[2]));
+  drawCone(baseX, baseY, invScale(parts[3]), -40,  dangerColor(parts[3]));
+
+  ctx.fillStyle = "white";
+  ctx.font = "14px sans-serif";
+  ctx.fillText(`PWM L: ${parts[5]}   PWM R: ${parts[6]}`, 30, 20);
+}
+
+function drawCone(cx, cy, length, angleDeg, color) {
+  const angle = angleDeg * Math.PI / 180;
+  const spread = 25 * Math.PI / 180;
+  const x1 = cx + length * Math.cos(angle - spread);
+  const y1 = cy + length * Math.sin(angle - spread);
+  const x2 = cx + length * Math.cos(angle + spread);
+  const y2 = cy + length * Math.sin(angle + spread);
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+function sendCommand(cmd) {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(cmd);
+    appendLog("📤 " + cmd);
+  }
+}
+
+function sendTimedCommand(cmd) {
+  sendCommand(cmd);
+  setTimeout(() => sendCommand("move:stop"), driveDuration);
+}
+
+function updateBias() {
+  const val = document.getElementById("bias").value;
+  document.getElementById("biasVal").innerText = val;
+  steeringBias = val;
+  sendCommand(`bias:${val}`);
+}
+
+function updateDuration() {
+  const val = document.getElementById("duration").value;
+  document.getElementById("durationVal").innerText = val;
+  driveDuration = parseInt(val);
+}
+
+function throttledPWM(side) {
+  clearTimeout(pwmTimeout[side]);
+  pwmTimeout[side] = setTimeout(() => {
+    const slider = document.getElementById("pwm" + capitalize(side));
+    const val = slider.value;
+    document.getElementById("pwm" + capitalize(side) + "Val").innerText = val;
+    sendCommand(`pwm_${side}:${val}`);
+  }, 100);
+}
+
+function appendLog(msg) {
+  const log = document.getElementById("log");
+  log.innerHTML += msg + "<br>";
+  log.scrollTop = log.scrollHeight;
+}
+
+function capitalize(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+window.onload = connectWebSocket;
+</script>
+</body>
+</html>
